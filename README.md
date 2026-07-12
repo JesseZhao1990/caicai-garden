@@ -38,6 +38,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 - 源码和可安装 APK 都发布在公共仓库 `JesseZhao1990/caicai-garden`，APK 位于 GitHub Releases。
 - App 每次启动会自动检查最新正式版，“今日”页的“版本升级”卡片也支持手动检查。
 - 发现新版本后，App 会下载 APK、校验 GitHub 提供的 SHA-256 摘要，并交给 Android 系统安装器确认升级。
+- 如果设备上安装的是此前的 Debug 开发包，需要先卸载再安装一次正式版；之后的 Release 都使用同一发布签名，可以直接覆盖升级。
 
 发布新版本时：
 
