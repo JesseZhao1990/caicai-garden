@@ -1,0 +1,1445 @@
+{
+  "sprite_size": 512,
+  "items": [
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "lettuce",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/lettuce/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "cabbage",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/cabbage/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "bok_choy",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/bok_choy/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "spinach",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/spinach/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "kale",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/kale/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "celery",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/celery/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "lettuce",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/lettuce/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "cabbage",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/cabbage/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "bok_choy",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/bok_choy/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "spinach",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/spinach/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "kale",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/kale/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "celery",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/celery/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "lettuce",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/lettuce/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "cabbage",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/cabbage/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "bok_choy",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/bok_choy/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "spinach",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/spinach/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "kale",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/kale/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "celery",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/celery/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "lettuce",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/lettuce/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "cabbage",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/cabbage/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "bok_choy",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/bok_choy/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "spinach",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/spinach/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "kale",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/kale/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "leafy",
+      "name": "celery",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/celery/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "tomato",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/tomato/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "cherry_tomato",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/cherry_tomato/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "chili_pepper",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/chili_pepper/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "bell_pepper",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/bell_pepper/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "eggplant",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/eggplant/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "okra",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/okra/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "tomato",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/tomato/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "cherry_tomato",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/cherry_tomato/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "chili_pepper",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/chili_pepper/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "bell_pepper",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/bell_pepper/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "eggplant",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/eggplant/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "okra",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/okra/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "tomato",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/tomato/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "cherry_tomato",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/cherry_tomato/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "chili_pepper",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/chili_pepper/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "bell_pepper",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/bell_pepper/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "eggplant",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/eggplant/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "okra",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/okra/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "tomato",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/tomato/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "cherry_tomato",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/cherry_tomato/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "chili_pepper",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/chili_pepper/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "bell_pepper",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/bell_pepper/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "eggplant",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/eggplant/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "fruiting",
+      "name": "okra",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/okra/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "cucumber",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/cucumber/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "pumpkin",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/pumpkin/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "zucchini",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/zucchini/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "bitter_melon",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/bitter_melon/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "green_bean",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/green_bean/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "snow_pea",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/snow_pea/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "cucumber",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/cucumber/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "pumpkin",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/pumpkin/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "zucchini",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/zucchini/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "bitter_melon",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/bitter_melon/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "green_bean",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/green_bean/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "snow_pea",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/snow_pea/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "cucumber",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/cucumber/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "pumpkin",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/pumpkin/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "zucchini",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/zucchini/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "bitter_melon",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/bitter_melon/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "green_bean",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/green_bean/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "snow_pea",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/snow_pea/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "cucumber",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/cucumber/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "pumpkin",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/pumpkin/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "zucchini",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/zucchini/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "bitter_melon",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/bitter_melon/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "green_bean",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/green_bean/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "vine_legume",
+      "name": "snow_pea",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/snow_pea/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "carrot",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/carrot/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "daikon",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/daikon/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "potato",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/potato/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "sweet_potato",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/sweet_potato/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "onion",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/onion/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "garlic",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/garlic/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "carrot",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/carrot/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "daikon",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/daikon/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "potato",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/potato/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "sweet_potato",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/sweet_potato/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "onion",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/onion/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "garlic",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/garlic/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "carrot",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/carrot/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "daikon",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/daikon/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "potato",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/potato/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "sweet_potato",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/sweet_potato/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "onion",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/onion/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "garlic",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/garlic/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "carrot",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/carrot/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "daikon",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/daikon/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "potato",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/potato/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "sweet_potato",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/sweet_potato/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "onion",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/onion/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "root_bulb",
+      "name": "garlic",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/garlic/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "basil",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/basil/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "mint",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/mint/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "cilantro",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/cilantro/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "scallion",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/scallion/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "strawberry",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/strawberry/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "corn",
+      "stage": "seedling",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/corn/seedling.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "basil",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/basil/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "mint",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/mint/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "cilantro",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/cilantro/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "scallion",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/scallion/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "strawberry",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/strawberry/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "corn",
+      "stage": "young",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/corn/young.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "basil",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/basil/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "mint",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/mint/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "cilantro",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/cilantro/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "scallion",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/scallion/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "strawberry",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/strawberry/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "corn",
+      "stage": "mature",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/corn/mature.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "basil",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/basil/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "mint",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/mint/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "cilantro",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/cilantro/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "scallion",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/scallion/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "strawberry",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/strawberry/harvest.png"
+    },
+    {
+      "kind": "crop_no_soil",
+      "group": "herb_extra",
+      "name": "corn",
+      "stage": "harvest",
+      "path": "design/imagegen-assets/v2/sprites/crops_no_soil/corn/harvest.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "grass_tile",
+      "path": "design/imagegen-assets/v2/sprites/terrain/grass_tile.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "empty_soil_tile",
+      "path": "design/imagegen-assets/v2/sprites/terrain/empty_soil_tile.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "raised_bed_empty",
+      "path": "design/imagegen-assets/v2/sprites/terrain/raised_bed_empty.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "raised_bed_soil",
+      "path": "design/imagegen-assets/v2/sprites/terrain/raised_bed_soil.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "selected_frame",
+      "path": "design/imagegen-assets/v2/sprites/terrain/selected_frame.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "watered_soil_tile",
+      "path": "design/imagegen-assets/v2/sprites/terrain/watered_soil_tile.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "mulched_bed_tile",
+      "path": "design/imagegen-assets/v2/sprites/terrain/mulched_bed_tile.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "straw_bed_tile",
+      "path": "design/imagegen-assets/v2/sprites/terrain/straw_bed_tile.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "compost_soil_tile",
+      "path": "design/imagegen-assets/v2/sprites/terrain/compost_soil_tile.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "disabled_grass_tile",
+      "path": "design/imagegen-assets/v2/sprites/terrain/disabled_grass_tile.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "stone_path_tile",
+      "path": "design/imagegen-assets/v2/sprites/terrain/stone_path_tile.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "gravel_path_tile",
+      "path": "design/imagegen-assets/v2/sprites/terrain/gravel_path_tile.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "wood_plank_path_tile",
+      "path": "design/imagegen-assets/v2/sprites/terrain/wood_plank_path_tile.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "flower_border_tile",
+      "path": "design/imagegen-assets/v2/sprites/terrain/flower_border_tile.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "grass_edge_corner_tile",
+      "path": "design/imagegen-assets/v2/sprites/terrain/grass_edge_corner_tile.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "mini_8x8_grid",
+      "path": "design/imagegen-assets/v2/sprites/terrain/mini_8x8_grid.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "field_grid_overlay",
+      "path": "design/imagegen-assets/v2/sprites/terrain/field_grid_overlay.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "target_cell_frame",
+      "path": "design/imagegen-assets/v2/sprites/terrain/target_cell_frame.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "valid_placement_frame",
+      "path": "design/imagegen-assets/v2/sprites/terrain/valid_placement_frame.png"
+    },
+    {
+      "kind": "terrain",
+      "group": "terrain",
+      "name": "invalid_placement_frame",
+      "path": "design/imagegen-assets/v2/sprites/terrain/invalid_placement_frame.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "greenhouse",
+      "path": "design/imagegen-assets/v2/sprites/structures/greenhouse.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "tool_shed",
+      "path": "design/imagegen-assets/v2/sprites/structures/tool_shed.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "wood_fence_straight",
+      "path": "design/imagegen-assets/v2/sprites/structures/wood_fence_straight.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "wood_fence_corner",
+      "path": "design/imagegen-assets/v2/sprites/structures/wood_fence_corner.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "garden_gate",
+      "path": "design/imagegen-assets/v2/sprites/structures/garden_gate.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "bamboo_trellis",
+      "path": "design/imagegen-assets/v2/sprites/structures/bamboo_trellis.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "arch_trellis",
+      "path": "design/imagegen-assets/v2/sprites/structures/arch_trellis.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "tomato_stakes",
+      "path": "design/imagegen-assets/v2/sprites/structures/tomato_stakes.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "irrigation_sprinkler",
+      "path": "design/imagegen-assets/v2/sprites/structures/irrigation_sprinkler.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "rain_barrel",
+      "path": "design/imagegen-assets/v2/sprites/structures/rain_barrel.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "compost_bin",
+      "path": "design/imagegen-assets/v2/sprites/structures/compost_bin.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "blank_wooden_sign",
+      "path": "design/imagegen-assets/v2/sprites/structures/blank_wooden_sign.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "blank_label_stake",
+      "path": "design/imagegen-assets/v2/sprites/structures/blank_label_stake.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "watering_can",
+      "path": "design/imagegen-assets/v2/sprites/structures/watering_can.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "hose_coil",
+      "path": "design/imagegen-assets/v2/sprites/structures/hose_coil.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "seed_tray",
+      "path": "design/imagegen-assets/v2/sprites/structures/seed_tray.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "harvest_basket",
+      "path": "design/imagegen-assets/v2/sprites/structures/harvest_basket.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "pruning_shears",
+      "path": "design/imagegen-assets/v2/sprites/structures/pruning_shears.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "shovel_rake_set",
+      "path": "design/imagegen-assets/v2/sprites/structures/shovel_rake_set.png"
+    },
+    {
+      "kind": "structure",
+      "group": "structures",
+      "name": "garden_lamp",
+      "path": "design/imagegen-assets/v2/sprites/structures/garden_lamp.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "water_badge",
+      "path": "design/imagegen-assets/v2/sprites/widgets/water_badge.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "fertilizer_badge",
+      "path": "design/imagegen-assets/v2/sprites/widgets/fertilizer_badge.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "harvest_badge",
+      "path": "design/imagegen-assets/v2/sprites/widgets/harvest_badge.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "growth_badge",
+      "path": "design/imagegen-assets/v2/sprites/widgets/growth_badge.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "heat_badge",
+      "path": "design/imagegen-assets/v2/sprites/widgets/heat_badge.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "rain_badge",
+      "path": "design/imagegen-assets/v2/sprites/widgets/rain_badge.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "pest_warning_badge",
+      "path": "design/imagegen-assets/v2/sprites/widgets/pest_warning_badge.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "disease_warning_badge",
+      "path": "design/imagegen-assets/v2/sprites/widgets/disease_warning_badge.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "pruning_badge",
+      "path": "design/imagegen-assets/v2/sprites/widgets/pruning_badge.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "photo_badge",
+      "path": "design/imagegen-assets/v2/sprites/widgets/photo_badge.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "note_record_badge",
+      "path": "design/imagegen-assets/v2/sprites/widgets/note_record_badge.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "calendar_badge",
+      "path": "design/imagegen-assets/v2/sprites/widgets/calendar_badge.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "mature_ready_badge",
+      "path": "design/imagegen-assets/v2/sprites/widgets/mature_ready_badge.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "low_water_badge",
+      "path": "design/imagegen-assets/v2/sprites/widgets/low_water_badge.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "temperature_badge",
+      "path": "design/imagegen-assets/v2/sprites/widgets/temperature_badge.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "selection_ring",
+      "path": "design/imagegen-assets/v2/sprites/widgets/selection_ring.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "drag_handle_arrows",
+      "path": "design/imagegen-assets/v2/sprites/widgets/drag_handle_arrows.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "rotate_arrow",
+      "path": "design/imagegen-assets/v2/sprites/widgets/rotate_arrow.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "scale_widget",
+      "path": "design/imagegen-assets/v2/sprites/widgets/scale_widget.png"
+    },
+    {
+      "kind": "widget",
+      "group": "widgets",
+      "name": "progress_gauge",
+      "path": "design/imagegen-assets/v2/sprites/widgets/progress_gauge.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "small_fruit_tree",
+      "path": "design/imagegen-assets/v2/sprites/environment/small_fruit_tree.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "leafy_shrub",
+      "path": "design/imagegen-assets/v2/sprites/environment/leafy_shrub.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "pink_flower_bush",
+      "path": "design/imagegen-assets/v2/sprites/environment/pink_flower_bush.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "yellow_flower_bush",
+      "path": "design/imagegen-assets/v2/sprites/environment/yellow_flower_bush.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "lavender_clump",
+      "path": "design/imagegen-assets/v2/sprites/environment/lavender_clump.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "round_stone",
+      "path": "design/imagegen-assets/v2/sprites/environment/round_stone.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "rock_cluster",
+      "path": "design/imagegen-assets/v2/sprites/environment/rock_cluster.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "stepping_stones",
+      "path": "design/imagegen-assets/v2/sprites/environment/stepping_stones.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "small_pond",
+      "path": "design/imagegen-assets/v2/sprites/environment/small_pond.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "wooden_border_log",
+      "path": "design/imagegen-assets/v2/sprites/environment/wooden_border_log.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "hedge_straight",
+      "path": "design/imagegen-assets/v2/sprites/environment/hedge_straight.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "hedge_corner",
+      "path": "design/imagegen-assets/v2/sprites/environment/hedge_corner.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "grass_tuft_cluster",
+      "path": "design/imagegen-assets/v2/sprites/environment/grass_tuft_cluster.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "wildflower_patch",
+      "path": "design/imagegen-assets/v2/sprites/environment/wildflower_patch.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "wheelbarrow",
+      "path": "design/imagegen-assets/v2/sprites/environment/wheelbarrow.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "seed_packet_blank",
+      "path": "design/imagegen-assets/v2/sprites/environment/seed_packet_blank.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "burlap_sack",
+      "path": "design/imagegen-assets/v2/sprites/environment/burlap_sack.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "empty_clay_pot",
+      "path": "design/imagegen-assets/v2/sprites/environment/empty_clay_pot.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "wooden_crate",
+      "path": "design/imagegen-assets/v2/sprites/environment/wooden_crate.png"
+    },
+    {
+      "kind": "environment",
+      "group": "environment",
+      "name": "birdhouse_no_bird",
+      "path": "design/imagegen-assets/v2/sprites/environment/birdhouse_no_bird.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "sunlight_glow",
+      "path": "design/imagegen-assets/v2/sprites/effects/sunlight_glow.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "soft_shadow_blob",
+      "path": "design/imagegen-assets/v2/sprites/effects/soft_shadow_blob.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "water_splash_droplets",
+      "path": "design/imagegen-assets/v2/sprites/effects/water_splash_droplets.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "dew_sparkles",
+      "path": "design/imagegen-assets/v2/sprites/effects/dew_sparkles.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "growth_sparkles",
+      "path": "design/imagegen-assets/v2/sprites/effects/growth_sparkles.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "mist_puff",
+      "path": "design/imagegen-assets/v2/sprites/effects/mist_puff.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "heat_wave_shimmer",
+      "path": "design/imagegen-assets/v2/sprites/effects/heat_wave_shimmer.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "frost_sparkles",
+      "path": "design/imagegen-assets/v2/sprites/effects/frost_sparkles.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "wind_swirl",
+      "path": "design/imagegen-assets/v2/sprites/effects/wind_swirl.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "moisture_blue_aura",
+      "path": "design/imagegen-assets/v2/sprites/effects/moisture_blue_aura.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "harvest_glow_ring",
+      "path": "design/imagegen-assets/v2/sprites/effects/harvest_glow_ring.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "valid_placement_glow",
+      "path": "design/imagegen-assets/v2/sprites/effects/valid_placement_glow.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "invalid_placement_glow",
+      "path": "design/imagegen-assets/v2/sprites/effects/invalid_placement_glow.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "selected_golden_glow",
+      "path": "design/imagegen-assets/v2/sprites/effects/selected_golden_glow.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "leaf_fall_particles",
+      "path": "design/imagegen-assets/v2/sprites/effects/leaf_fall_particles.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "flower_petal_particles",
+      "path": "design/imagegen-assets/v2/sprites/effects/flower_petal_particles.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "fertilizer_sparkles",
+      "path": "design/imagegen-assets/v2/sprites/effects/fertilizer_sparkles.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "pest_warning_pulse",
+      "path": "design/imagegen-assets/v2/sprites/effects/pest_warning_pulse.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "disease_warning_pulse",
+      "path": "design/imagegen-assets/v2/sprites/effects/disease_warning_pulse.png"
+    },
+    {
+      "kind": "effect",
+      "group": "effects",
+      "name": "rain_streak_patch",
+      "path": "design/imagegen-assets/v2/sprites/effects/rain_streak_patch.png"
+    }
+  ]
+}

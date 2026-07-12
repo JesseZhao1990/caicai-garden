@@ -1,0 +1,1423 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>菜园管家视觉设计稿</title>
+  <style>
+    :root {
+      --leaf: #4f8f45;
+      --leaf-deep: #2f6f4e;
+      --leaf-soft: #dcebd4;
+      --grass: #edf6e6;
+      --sun: #f6c45f;
+      --soil: #9a6240;
+      --soil-light: #c98a59;
+      --wood: #a36b3f;
+      --wood-dark: #6e482e;
+      --stone: #d7d0bc;
+      --cream: #fff9ee;
+      --paper: #fff7e9;
+      --ink: #203025;
+      --muted: #6a7768;
+      --glass: rgba(255,255,255,.72);
+      --shadow: 0 24px 70px rgba(56, 72, 44, .18);
+      --card-shadow: 0 12px 28px rgba(62, 63, 45, .13);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background:
+        radial-gradient(circle at 16% 8%, rgba(255, 221, 121, .42), transparent 23rem),
+        radial-gradient(circle at 86% 2%, rgba(170, 222, 117, .54), transparent 28rem),
+        linear-gradient(145deg, #f8fbef 0%, #e3efd9 46%, #d7e7cc 100%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.18) 0 1px, transparent 1px 120px),
+        linear-gradient(0deg, rgba(255,255,255,.12) 0 1px, transparent 1px 120px);
+      mask-image: radial-gradient(circle at 50% 15%, rgba(0,0,0,.58), transparent 68%);
+    }
+
+    .board {
+      width: min(1920px, 100%);
+      margin: 0 auto;
+      padding: 42px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(320px, 1.05fr) minmax(360px, .95fr);
+      gap: 28px;
+      align-items: stretch;
+      margin-bottom: 34px;
+    }
+
+    .brief {
+      min-height: 280px;
+      padding: 34px;
+      border: 1px solid rgba(80, 105, 58, .16);
+      border-radius: 28px;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.82), rgba(255,248,222,.76)),
+        linear-gradient(120deg, rgba(79,143,69,.12), transparent);
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .brief::after {
+      content: "";
+      position: absolute;
+      width: 320px;
+      height: 320px;
+      right: -96px;
+      bottom: -108px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(246,196,95,.36), rgba(79,143,69,.12) 42%, transparent 68%);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(38px, 4vw, 68px);
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+
+    .brief p {
+      width: min(720px, 100%);
+      margin: 18px 0 0;
+      color: #465542;
+      font-size: 18px;
+      line-height: 1.8;
+    }
+
+    .style-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 26px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .tag {
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.76);
+      border: 1px solid rgba(91, 118, 72, .2);
+      color: #31462f;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .reference-card {
+      border-radius: 28px;
+      overflow: hidden;
+      background: #d9e8c8;
+      border: 1px solid rgba(80, 105, 58, .16);
+      box-shadow: var(--shadow);
+      position: relative;
+      min-height: 280px;
+    }
+
+    .reference-card img {
+      width: 100%;
+      height: 100%;
+      min-height: 280px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .reference-caption {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255, 249, 235, .78);
+      border: 1px solid rgba(255,255,255,.8);
+      backdrop-filter: blur(12px);
+      font-weight: 800;
+      box-shadow: 0 10px 24px rgba(46, 55, 33, .16);
+    }
+
+    .screens {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(320px, 1fr));
+      gap: 28px;
+      align-items: start;
+    }
+
+    .screen-card {
+      display: grid;
+      gap: 12px;
+      justify-items: center;
+    }
+
+    .screen-title {
+      width: min(390px, 100%);
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      color: #334432;
+    }
+
+    .screen-title strong { font-size: 20px; }
+    .screen-title span { font-size: 13px; color: var(--muted); font-weight: 700; }
+
+    .phone {
+      width: min(390px, 100%);
+      height: 844px;
+      border-radius: 42px;
+      padding: 16px 14px 18px;
+      background:
+        radial-gradient(circle at 68% 4%, rgba(255, 226, 124, .24), transparent 32%),
+        linear-gradient(160deg, rgba(255,255,255,.98), rgba(251, 247, 232, .96));
+      box-shadow:
+        0 30px 80px rgba(47, 73, 43, .23),
+        inset 0 0 0 1px rgba(255,255,255,.72);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .phone::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 8%, rgba(255, 220, 132, .26), transparent 42%),
+        radial-gradient(circle at 90% 24%, rgba(118, 178, 80, .16), transparent 38%);
+      pointer-events: none;
+    }
+
+    .status {
+      height: 26px;
+      padding: 0 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #2e3a2e;
+      font-size: 12px;
+      font-weight: 800;
+      position: relative;
+      z-index: 1;
+    }
+
+    .app {
+      height: calc(100% - 26px);
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow: hidden;
+    }
+
+    .scroll {
+      min-height: 0;
+      flex: 1;
+      overflow: hidden;
+      padding: 8px 8px 82px;
+    }
+
+    .nav {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      height: 62px;
+      border-radius: 24px;
+      background: rgba(255, 251, 241, .9);
+      border: 1px solid rgba(121, 143, 105, .18);
+      box-shadow: 0 12px 30px rgba(63, 75, 48, .14);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      align-items: center;
+      gap: 4px;
+      padding: 7px;
+      backdrop-filter: blur(14px);
+    }
+
+    .nav-item {
+      height: 46px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      color: #66725f;
+      font-weight: 800;
+    }
+
+    .nav-item.active {
+      background: #dfebd5;
+      color: #234324;
+    }
+
+    .page-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 4px 0 12px;
+    }
+
+    .kicker {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 800;
+      letter-spacing: .04em;
+    }
+
+    .page-head h2 {
+      margin: 4px 0 0;
+      font-size: 30px;
+      line-height: 1.06;
+      letter-spacing: 0;
+    }
+
+    .round-btn {
+      min-width: 48px;
+      height: 48px;
+      padding: 0 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(68, 85, 58, .17);
+      background: rgba(255,255,255,.7);
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      box-shadow: 0 8px 20px rgba(73, 88, 61, .12);
+    }
+
+    .garden-hero {
+      height: 220px;
+      border-radius: 28px;
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.15), rgba(44,86,40,.1)),
+        linear-gradient(145deg, #98c46c, #4f8f45);
+      border: 1px solid rgba(255,255,255,.7);
+      box-shadow: var(--card-shadow);
+    }
+
+    .garden-hero.real-preview {
+      background-image:
+        linear-gradient(180deg, rgba(28, 54, 30, 0) 42%, rgba(28, 54, 30, .42)),
+        url("assets/garden-map-isometric-v1.png");
+      background-size: 136%;
+      background-position: 52% 48%;
+      border: 1px solid rgba(255,255,255,.72);
+    }
+
+    .garden-hero .sun {
+      position: absolute;
+      width: 82px;
+      height: 82px;
+      right: 24px;
+      top: 24px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #fff7bf 0 25%, #ffd86f 45%, rgba(255,216,111,0) 72%);
+    }
+
+    .garden-hero .shed {
+      position: absolute;
+      left: 18px;
+      top: 62px;
+      width: 86px;
+      height: 76px;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #9a6b42, #b88455);
+      border: 4px solid #714b32;
+      box-shadow: inset 18px 0 rgba(255,255,255,.12);
+    }
+
+    .garden-hero .shed::before {
+      content: "";
+      position: absolute;
+      left: -7px;
+      right: -7px;
+      top: -24px;
+      height: 30px;
+      clip-path: polygon(50% 0, 100% 100%, 0 100%);
+      background: #6d8f61;
+      border-radius: 6px;
+    }
+
+    .glass-house {
+      position: absolute;
+      right: 16px;
+      bottom: 30px;
+      width: 108px;
+      height: 82px;
+      border-radius: 8px 8px 12px 12px;
+      background: rgba(210, 238, 232, .4);
+      border: 4px solid rgba(235,255,255,.85);
+      box-shadow: inset 0 0 0 2px rgba(90, 127, 120, .36);
+    }
+
+    .glass-house::before {
+      content: "";
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      top: -34px;
+      height: 40px;
+      clip-path: polygon(50% 0, 100% 100%, 0 100%);
+      background: rgba(210, 238, 232, .48);
+      border: 4px solid rgba(235,255,255,.85);
+      border-bottom: 0;
+    }
+
+    .hero-path {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 18px;
+      height: 44px;
+      background: repeating-linear-gradient(90deg, transparent 0 17px, rgba(255,255,255,.54) 18px 46px, transparent 48px 64px);
+      transform: rotate(-5deg);
+      opacity: .75;
+    }
+
+    .mini-bed {
+      position: absolute;
+      border-radius: 14px;
+      background: var(--soil-light);
+      border: 5px solid var(--wood);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.18), 0 10px 18px rgba(55, 63, 35, .18);
+    }
+
+    .mini-bed.b1 { left: 110px; top: 48px; width: 110px; height: 72px; }
+    .mini-bed.b2 { left: 92px; bottom: 34px; width: 132px; height: 74px; }
+    .mini-bed.b3 { right: 126px; top: 86px; width: 84px; height: 60px; }
+
+    .hero-label {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 16px;
+      padding: 13px 14px;
+      border-radius: 20px;
+      background: rgba(255, 249, 235, .78);
+      border: 1px solid rgba(255,255,255,.82);
+      backdrop-filter: blur(10px);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 900;
+    }
+
+    .weather-strip,
+    .task-card,
+    .cream-card,
+    .wood-card {
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,.62);
+      box-shadow: var(--card-shadow);
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.74), rgba(255, 247, 225, .88));
+      backdrop-filter: blur(12px);
+    }
+
+    .weather-strip {
+      margin-top: 12px;
+      padding: 14px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .weather-strip::after {
+      content: "";
+      position: absolute;
+      width: 112px;
+      height: 112px;
+      right: -32px;
+      top: -42px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 231, 128, .78), rgba(255, 231, 128, .28) 42%, transparent 70%);
+    }
+
+    .weather-strip strong { font-size: 30px; }
+    .weather-strip span { color: var(--muted); font-size: 12px; font-weight: 800; }
+
+    .task-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .task-card {
+      padding: 13px;
+      display: grid;
+      grid-template-columns: 46px 1fr;
+      gap: 12px;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .task-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 12px;
+      bottom: 12px;
+      width: 5px;
+      border-radius: 0 99px 99px 0;
+      background: linear-gradient(#84b95f, #2f6f4e);
+    }
+
+    .task-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      color: #244326;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.7), rgba(220,238,207,.88));
+      border: 1px solid rgba(255,255,255,.72);
+      font-size: 22px;
+      box-shadow: inset 0 0 0 1px rgba(47,111,78,.08);
+    }
+
+    .task-card h3,
+    .cream-card h3,
+    .wood-card h3 {
+      margin: 0;
+      font-size: 17px;
+    }
+
+    .task-card p,
+    .cream-card p,
+    .wood-card p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .garden-card {
+      padding: 14px;
+      border-radius: 28px;
+      background: #eaf5e3;
+      border: 1px solid rgba(70, 105, 56, .12);
+      box-shadow: var(--card-shadow);
+    }
+
+    .immersive-map-card {
+      padding: 10px;
+      border-radius: 30px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.68), rgba(230, 244, 219, .86)),
+        #eaf5e3;
+      border: 1px solid rgba(70, 105, 56, .12);
+      box-shadow: var(--card-shadow);
+    }
+
+    .real-garden-map,
+    .detail-map-photo {
+      position: relative;
+      overflow: hidden;
+      border-radius: 26px;
+      background-image:
+        linear-gradient(180deg, rgba(25, 48, 28, 0) 48%, rgba(25, 48, 28, .36)),
+        url("assets/garden-map-isometric-v1.png");
+      background-size: cover;
+      background-position: center;
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.32),
+        0 18px 40px rgba(49, 72, 39, .2);
+    }
+
+    .real-garden-map {
+      height: 548px;
+      border: 1px solid rgba(255,255,255,.68);
+    }
+
+    .detail-map-photo {
+      height: 244px;
+      background-size: 205%;
+      background-position: 54% 34%;
+      border: 7px solid rgba(144, 93, 52, .72);
+    }
+
+    .map-chip-row {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      top: 12px;
+      display: flex;
+      gap: 8px;
+      z-index: 4;
+      overflow: hidden;
+    }
+
+    .map-chip {
+      padding: 9px 12px;
+      border-radius: 16px;
+      background: rgba(255, 249, 235, .72);
+      border: 1px solid rgba(255,255,255,.76);
+      backdrop-filter: blur(14px);
+      font-size: 12px;
+      font-weight: 900;
+      color: #31462f;
+      box-shadow: 0 8px 20px rgba(51, 65, 42, .14);
+      white-space: nowrap;
+    }
+
+    .map-chip.active {
+      background: rgba(47, 111, 78, .9);
+      color: white;
+    }
+
+    .plot-glow {
+      position: absolute;
+      border: 2px solid rgba(255, 246, 181, .96);
+      background: rgba(255, 224, 105, .13);
+      box-shadow:
+        0 0 0 6px rgba(255, 221, 105, .17),
+        0 0 34px rgba(255, 230, 120, .42);
+      transform: rotate(-8deg);
+      border-radius: 18px;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .plot-glow.tomato-bed {
+      left: 36%;
+      top: 26%;
+      width: 30%;
+      height: 18%;
+    }
+
+    .plot-glow.cucumber-bed {
+      left: 5%;
+      top: 37%;
+      width: 32%;
+      height: 18%;
+      transform: rotate(-12deg);
+    }
+
+    .map-pin {
+      position: absolute;
+      z-index: 5;
+      min-width: 104px;
+      padding: 10px 11px;
+      border-radius: 18px;
+      background: rgba(255, 249, 235, .82);
+      border: 1px solid rgba(255,255,255,.84);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 12px 30px rgba(41, 54, 34, .18);
+      font-size: 12px;
+      font-weight: 900;
+      color: #2c3d2a;
+      line-height: 1.35;
+    }
+
+    .map-pin::after {
+      content: "";
+      position: absolute;
+      left: 22px;
+      bottom: -7px;
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      background: rgba(255, 249, 235, .82);
+      transform: rotate(45deg);
+      border-right: 1px solid rgba(255,255,255,.74);
+      border-bottom: 1px solid rgba(255,255,255,.74);
+    }
+
+    .map-pin small {
+      display: block;
+      margin-top: 2px;
+      color: #64705f;
+      font-size: 10px;
+    }
+
+    .map-pin.active {
+      background: rgba(47,111,78,.92);
+      color: white;
+    }
+
+    .map-pin.active small {
+      color: rgba(255,255,255,.76);
+    }
+
+    .map-pin.active::after {
+      background: rgba(47,111,78,.92);
+    }
+
+    .map-pin.p1 { left: 47%; top: 34%; }
+    .map-pin.p2 { left: 13%; top: 52%; }
+    .map-pin.p3 { right: 8%; top: 56%; }
+
+    .map-task-panel {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      z-index: 6;
+      padding: 13px;
+      border-radius: 22px;
+      background: rgba(255, 249, 235, .84);
+      border: 1px solid rgba(255,255,255,.86);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 14px 34px rgba(46, 57, 36, .2);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .map-task-panel strong {
+      font-size: 15px;
+    }
+
+    .map-task-panel span {
+      display: block;
+      margin-top: 3px;
+      font-size: 11px;
+      color: #5d6b59;
+      font-weight: 800;
+    }
+
+    .map-action {
+      height: 38px;
+      padding: 0 12px;
+      border-radius: 15px;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-size: 12px;
+      font-weight: 900;
+      background: #2f6f4e;
+    }
+
+    .photo-strip {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      z-index: 3;
+      padding: 11px 12px;
+      border-radius: 18px;
+      background: rgba(255, 249, 235, .84);
+      border: 1px solid rgba(255,255,255,.86);
+      backdrop-filter: blur(12px);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 900;
+    }
+
+    .chips {
+      display: flex;
+      gap: 8px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .chip {
+      white-space: nowrap;
+      padding: 10px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.55);
+      border: 1px solid rgba(88, 108, 72, .22);
+      font-size: 13px;
+      font-weight: 900;
+      color: #43513e;
+    }
+
+    .chip.active {
+      background: #dce9ce;
+      color: #203c22;
+      border-color: transparent;
+    }
+
+    .big-bed {
+      height: 380px;
+      border-radius: 28px;
+      background:
+        repeating-linear-gradient(0deg, transparent 0 76px, rgba(103, 68, 43, .2) 77px 80px, transparent 81px 132px),
+        linear-gradient(145deg, #c98c58, #b87449);
+      border: 8px solid #9a6036;
+      position: relative;
+      overflow: hidden;
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.1);
+    }
+
+    .bed-badge {
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      padding: 11px 12px;
+      border-radius: 16px;
+      background: rgba(255,249,235,.86);
+      font-weight: 900;
+      line-height: 1.35;
+    }
+
+    .bed-count {
+      position: absolute;
+      right: 14px;
+      top: 14px;
+      padding: 10px 13px;
+      border-radius: 16px;
+      background: var(--leaf-deep);
+      color: white;
+      font-weight: 900;
+    }
+
+    .plant-grid {
+      position: absolute;
+      left: 38px;
+      right: 38px;
+      top: 100px;
+      bottom: 68px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      place-items: center;
+    }
+
+    .tomato {
+      width: 42px;
+      height: 48px;
+      position: relative;
+    }
+
+    .tomato::before {
+      content: "";
+      position: absolute;
+      left: 20px;
+      top: 3px;
+      width: 5px;
+      height: 44px;
+      border-radius: 6px;
+      background: #397c34;
+    }
+
+    .leaf {
+      position: absolute;
+      width: 24px;
+      height: 12px;
+      border-radius: 50%;
+      background: #55a14c;
+      transform: rotate(34deg);
+      box-shadow: inset 6px 0 rgba(210,235,151,.36);
+    }
+
+    .leaf.l1 { left: 0; top: 11px; transform: rotate(32deg); }
+    .leaf.l2 { right: 0; top: 16px; transform: rotate(122deg); }
+    .leaf.l3 { left: 3px; top: 29px; transform: rotate(126deg); }
+
+    .fruit {
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #e8583c;
+      box-shadow: inset -4px -4px rgba(162,53,37,.24), inset 4px 4px rgba(255,255,255,.28);
+    }
+
+    .fruit.f1 { left: 14px; top: 12px; }
+    .fruit.f2 { left: 6px; top: 28px; }
+    .fruit.f3 { right: 3px; top: 28px; }
+
+    .vine-row {
+      position: absolute;
+      inset: 78px 42px 70px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      border-left: 3px solid rgba(78,62,40,.45);
+      border-right: 3px solid rgba(78,62,40,.45);
+    }
+
+    .vine-row::before,
+    .vine-row::after {
+      content: "";
+      border-left: 3px solid rgba(78,62,40,.45);
+    }
+
+    .cuke-grid {
+      position: absolute;
+      inset: 102px 48px 82px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      place-items: center;
+    }
+
+    .cucumber {
+      width: 42px;
+      height: 36px;
+      position: relative;
+    }
+
+    .cucumber::before {
+      content: "";
+      position: absolute;
+      left: 4px;
+      top: 15px;
+      width: 36px;
+      height: 4px;
+      border-radius: 99px;
+      background: #2f927e;
+      transform: rotate(-38deg);
+    }
+
+    .cuke {
+      position: absolute;
+      width: 12px;
+      height: 28px;
+      border-radius: 99px;
+      background: #7cbc45;
+      transform: rotate(-20deg);
+      left: 17px;
+      top: 5px;
+      box-shadow: inset 4px 0 rgba(255,255,255,.27);
+    }
+
+    .cucumber .leaf {
+      width: 19px;
+      height: 12px;
+      background: #2d9987;
+    }
+
+    .cucumber .l1 { left: 2px; top: 11px; }
+    .cucumber .l2 { right: 0; top: 21px; }
+
+    .bed-label {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      padding: 13px 14px;
+      border-radius: 18px;
+      background: rgba(255, 249, 235, .88);
+      font-weight: 900;
+      color: #30402f;
+    }
+
+    .legend {
+      display: flex;
+      gap: 10px;
+      margin: 10px 0 8px;
+      color: #556450;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 4px;
+      background: var(--leaf);
+    }
+
+    .dot.vine { background: #2b9788; }
+    .dot.fruit { background: #d75d3d; }
+    .dot.root { background: #bd7e2f; }
+
+    .detail-bed {
+      height: 172px;
+      border-radius: 26px;
+      background: linear-gradient(145deg, #ca8f5b, #a86b42);
+      border: 7px solid #8c5b36;
+      position: relative;
+      box-shadow: var(--card-shadow);
+      overflow: hidden;
+    }
+
+    .detail-bed .plant-grid {
+      inset: 34px 20px 24px;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      transform: scale(.82);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 12px 0;
+    }
+
+    .stat {
+      padding: 12px;
+      border-radius: 20px;
+      background: rgba(255,249,235,.86);
+      border: 1px solid rgba(95,113,79,.13);
+      box-shadow: var(--card-shadow);
+    }
+
+    .stat strong { display:block; font-size: 18px; }
+    .stat span { color: var(--muted); font-size: 11px; font-weight: 800; }
+
+    .timeline {
+      display: grid;
+      gap: 10px;
+      position: relative;
+      padding-left: 8px;
+    }
+
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 30px;
+      top: 22px;
+      bottom: 22px;
+      width: 8px;
+      border-radius: 99px;
+      background:
+        linear-gradient(180deg, rgba(155, 132, 92, .22), rgba(91, 119, 71, .14)),
+        repeating-linear-gradient(180deg, #cfc5ad 0 16px, #e6dfcf 17px 30px);
+      box-shadow: inset 0 0 0 1px rgba(113, 94, 63, .12);
+    }
+
+    .stone-item {
+      display: grid;
+      grid-template-columns: 46px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      border-radius: 22px;
+      background:
+        linear-gradient(145deg, rgba(255,250,236,.94), rgba(239,232,208,.86));
+      border: 1px solid rgba(255,255,255,.72);
+      box-shadow: var(--card-shadow);
+      position: relative;
+      z-index: 1;
+    }
+
+    .stone {
+      width: 46px;
+      height: 38px;
+      border-radius: 48% 40% 46% 38%;
+      background:
+        radial-gradient(circle at 32% 28%, rgba(255,255,255,.46), transparent 32%),
+        linear-gradient(145deg, #ebe5d5, #c9bea6);
+      border: 1px solid rgba(118,103,76,.15);
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      box-shadow: 0 4px 10px rgba(82, 75, 58, .12);
+    }
+
+    .journal-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .photo-card {
+      min-height: 132px;
+      padding: 10px;
+      border-radius: 24px;
+      background:
+        linear-gradient(145deg, rgba(255,252,242,.96), rgba(236, 226, 198, .88));
+      border: 1px solid rgba(255,255,255,.76);
+      box-shadow: var(--card-shadow);
+      transform: rotate(var(--r));
+    }
+
+    .photo {
+      height: 82px;
+      border-radius: 18px;
+      background-image: url("assets/garden-map-isometric-v1.png");
+      background-size: 280px auto;
+      background-position: var(--photo-pos, 50% 50%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .photo::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(32,48,37,.2)),
+        radial-gradient(circle at 20% 12%, rgba(255,232,139,.34), transparent 38%);
+    }
+
+    .photo.tomato-shot { --photo-pos: 54% 35%; }
+    .photo.cucumber-shot { --photo-pos: 18% 52%; }
+    .photo.leaf-shot { --photo-pos: 69% 50%; }
+    .photo.greenhouse-shot { --photo-pos: 10% 18%; }
+
+    .photo-card p {
+      margin: 9px 2px 0;
+      font-size: 12px;
+      color: #4e5a4d;
+      font-weight: 800;
+    }
+
+    .sheet {
+      margin-top: 8px;
+      padding: 14px;
+      border-radius: 30px;
+      background:
+        linear-gradient(145deg, rgba(255, 250, 236, .94), rgba(245, 238, 211, .88));
+      border: 1px solid rgba(255,255,255,.7);
+      box-shadow: var(--card-shadow);
+    }
+
+    .field {
+      height: 54px;
+      border-radius: 18px;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.78), rgba(255,247,224,.72));
+      border: 1px solid rgba(146, 119, 77, .16);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      color: #31422f;
+      font-weight: 900;
+      margin-top: 10px;
+    }
+
+    .crop-picker {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .crop-card {
+      height: 96px;
+      border-radius: 22px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.66), rgba(234,244,223,.84));
+      border: 1px solid rgba(95,113,79,.15);
+      padding: 11px;
+      position: relative;
+      overflow: hidden;
+      font-weight: 900;
+      box-shadow: var(--card-shadow);
+      isolation: isolate;
+    }
+
+    .crop-card::after {
+      content: "";
+      position: absolute;
+      right: -18px;
+      bottom: -18px;
+      width: 104px;
+      height: 84px;
+      border-radius: 22px;
+      background-image: url("assets/garden-map-isometric-v1.png");
+      background-size: 310px auto;
+      background-position: var(--crop-pos, 50% 50%);
+      opacity: .88;
+      filter: saturate(1.08);
+      box-shadow: inset 0 0 0 999px rgba(255,255,255,.05);
+      z-index: 0;
+    }
+
+    .crop-card.pakchoi { --crop-pos: 70% 49%; }
+    .crop-card.lettuce { --crop-pos: 68% 45%; }
+    .crop-card.herb { --crop-pos: 43% 50%; }
+    .crop-card.water { --crop-pos: 16% 46%; }
+
+    .crop-copy {
+      position: relative;
+      z-index: 1;
+      width: 68%;
+      text-shadow: 0 1px 0 rgba(255,255,255,.62);
+    }
+
+    .crop-card.active {
+      background: #fff3df;
+      border: 2px solid #d7a252;
+    }
+
+    .crop-card > span,
+    .crop-card > br {
+      position: relative;
+      z-index: 1;
+    }
+
+    .primary {
+      height: 54px;
+      border-radius: 20px;
+      background: linear-gradient(145deg, #3d8550, #2f6f4e);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      box-shadow: 0 14px 26px rgba(47,111,78,.28);
+      margin-top: 14px;
+    }
+
+    @media (max-width: 1240px) {
+      .screens { grid-template-columns: repeat(2, minmax(320px, 1fr)); }
+      .hero { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 760px) {
+      .board { padding: 20px; }
+      .screens { grid-template-columns: 1fr; }
+      .phone { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="board">
+    <section class="hero">
+      <div class="brief">
+        <div class="kicker">CAICAI GARDEN · VISUAL DIRECTION</div>
+        <h1>把菜园做成可以天天看的微缩世界</h1>
+        <p>整体视觉向参考图靠近：阳光、木质菜床、石板路径、玻璃温室、作物挂牌和灌溉线。页面交互从“管理列表”转成“进入一块菜地、切换地块、查看生长和任务”。</p>
+        <div class="style-tags">
+          <span class="tag">微缩菜园</span>
+          <span class="tag">木牌与菜床</span>
+          <span class="tag">温室玻璃感</span>
+          <span class="tag">石板路径时间线</span>
+          <span class="tag">暖阳自然光</span>
+          <span class="tag">作物插画化</span>
+        </div>
+      </div>
+      <div class="reference-card">
+        <img src="/Users/bytedance/.codex/attachments/60ff0357-c485-4fd9-af14-c25734b31bf7/image-1.png" alt="参考菜园风格图" />
+        <div class="reference-caption">参考风格：精致、丰富、真实但带一点玩具模型感</div>
+      </div>
+    </section>
+
+    <section class="screens">
+      <article class="screen-card">
+        <div class="screen-title"><strong>今日工作台</strong><span>打开就知道今天做什么</span></div>
+        <div class="phone">
+          <div class="status"><span>09:24</span><span>晴 24°C</span></div>
+          <div class="app">
+            <div class="scroll">
+              <div class="page-head">
+                <div><div class="kicker">早上好，菜园状态不错</div><h2>今日菜园</h2></div>
+                <div class="round-btn">☀</div>
+              </div>
+              <div class="garden-hero real-preview">
+                <div class="hero-label"><span>3 块地 · 2 个需处理</span><span>查看地图</span></div>
+              </div>
+              <div class="weather-strip">
+                <div><strong>21.6°</strong><br><span>湿度 93% · 今日无雨</span></div>
+                <div class="round-btn">↻</div>
+              </div>
+              <div class="task-list">
+                <div class="task-card"><div class="task-icon">💧</div><div><h3>1 号畦番茄建议傍晚浇水</h3><p>开花坐果期，未来 24 小时有效降雨不足。</p></div></div>
+                <div class="task-card"><div class="task-icon">✂</div><div><h3>黄瓜进入搭架检查窗口</h3><p>藤蔓已爬架，检查绑蔓和幼瓜状态。</p></div></div>
+                <div class="task-card"><div class="task-icon">🧺</div><div><h3>阳台箱可安排下一批播种</h3><p>空地推荐小白菜、生菜或香菜。</p></div></div>
+              </div>
+            </div>
+            <nav class="nav"><div class="nav-item active">今日</div><div class="nav-item">菜园</div><div class="nav-item">日历</div><div class="nav-item">记录</div></nav>
+          </div>
+        </div>
+      </article>
+
+      <article class="screen-card">
+        <div class="screen-title"><strong>菜园地图</strong><span>单块大图 + 地块切换</span></div>
+        <div class="phone">
+          <div class="status"><span>09:24</span><span>3 块地</span></div>
+          <div class="app">
+            <div class="scroll">
+              <div class="page-head">
+                <div><div class="kicker">当前查看</div><h2>菜地地图</h2></div>
+                <div class="round-btn">＋</div>
+              </div>
+              <div class="immersive-map-card">
+                <div class="real-garden-map">
+                  <div class="map-chip-row">
+                    <span class="map-chip active">全园</span>
+                    <span class="map-chip">1 号畦</span>
+                    <span class="map-chip">温室</span>
+                    <span class="map-chip">待办</span>
+                  </div>
+                  <div class="plot-glow tomato-bed"></div>
+                  <div class="map-pin active p1">🍅 1 号畦<small>番茄 · 坐果期 · 36%</small></div>
+                  <div class="map-pin p2">🥒 2 号畦<small>黄瓜 · 结果期 · 44%</small></div>
+                  <div class="map-pin p3">🥬 叶菜床<small>生菜 · 可采摘</small></div>
+                  <div class="map-task-panel">
+                    <div><strong>今日优先：1 号畦浇水</strong><span>近 24 小时无雨，番茄坐果期需要稳定水分</span></div>
+                    <div class="map-action">去处理</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <nav class="nav"><div class="nav-item">今日</div><div class="nav-item active">菜园</div><div class="nav-item">日历</div><div class="nav-item">记录</div></nav>
+          </div>
+        </div>
+      </article>
+
+      <article class="screen-card">
+        <div class="screen-title"><strong>地块详情</strong><span>从地图进入一块地</span></div>
+        <div class="phone">
+          <div class="status"><span>09:24</span><span>1 号畦</span></div>
+          <div class="app">
+            <div class="scroll">
+              <div class="page-head">
+                <div><div class="kicker">露地 · 壤土 · 约 3 平米</div><h2>番茄地块</h2></div>
+                <div class="round-btn">⋯</div>
+              </div>
+              <div class="detail-map-photo">
+                <div class="plot-glow tomato-bed" style="left:29%;top:32%;width:42%;height:30%;"></div>
+                <div class="photo-strip"><span>🍅 番茄 · 开花坐果期</span><span>36%</span></div>
+              </div>
+              <div class="stats"><div class="stat"><strong>36%</strong><span>生长进度</span></div><div class="stat"><strong>43 天</strong><span>已种植</span></div><div class="stat"><strong>7/14</strong><span>预计采收</span></div></div>
+              <div class="cream-card" style="padding:14px;margin-bottom:10px"><h3>今日建议浇水</h3><p>近 24 小时无雨，开花坐果期需要稳定水分。建议傍晚浇透。</p></div>
+              <div class="cream-card" style="padding:14px"><h3>下次管理</h3><p>3 天后检查坐果情况，雨后注意叶面病斑。</p></div>
+            </div>
+            <nav class="nav"><div class="nav-item">今日</div><div class="nav-item active">菜园</div><div class="nav-item">日历</div><div class="nav-item">记录</div></nav>
+          </div>
+        </div>
+      </article>
+
+      <article class="screen-card">
+        <div class="screen-title"><strong>日历计划</strong><span>石板路式时间线</span></div>
+        <div class="phone">
+          <div class="status"><span>09:24</span><span>本周 8 项</span></div>
+          <div class="app">
+            <div class="scroll">
+              <div class="page-head"><div><div class="kicker">未来 7 天</div><h2>菜园日历</h2></div><div class="round-btn">▣</div></div>
+              <div class="timeline">
+                <div class="stone-item"><div class="stone">今</div><div><h3>番茄浇水</h3><p>傍晚，1 号畦</p></div><strong>高</strong></div>
+                <div class="stone-item"><div class="stone">明</div><div><h3>黄瓜搭架检查</h3><p>看绑蔓和幼瓜状态</p></div><strong>中</strong></div>
+                <div class="stone-item"><div class="stone">7/3</div><div><h3>小白菜播种建议</h3><p>阳台箱空地可复种</p></div><strong>低</strong></div>
+                <div class="stone-item"><div class="stone">7/5</div><div><h3>番茄追肥窗口</h3><p>雨后 1 天补磷钾肥</p></div><strong>中</strong></div>
+              </div>
+              <div class="garden-card" style="margin-top:14px">
+                <h3 style="margin:0 0 8px">天气风险</h3>
+                <p style="margin:0;color:#64705f;font-size:13px;line-height:1.55">7/3 最高 35°C，瓜果类地块需要早晚巡查，避免中午大水漫灌。</p>
+              </div>
+            </div>
+            <nav class="nav"><div class="nav-item">今日</div><div class="nav-item">菜园</div><div class="nav-item active">日历</div><div class="nav-item">记录</div></nav>
+          </div>
+        </div>
+      </article>
+
+      <article class="screen-card">
+        <div class="screen-title"><strong>记录相册</strong><span>像菜园手账</span></div>
+        <div class="phone">
+          <div class="status"><span>09:24</span><span>32 条记录</span></div>
+          <div class="app">
+            <div class="scroll">
+              <div class="page-head"><div><div class="kicker">操作、照片、产量</div><h2>菜园记录</h2></div><div class="round-btn">＋</div></div>
+              <div class="journal-grid">
+                <div class="photo-card" style="--r:-2deg"><div class="photo tomato-shot"></div><p>番茄浇透 · 今天</p></div>
+                <div class="photo-card" style="--r:1.5deg"><div class="photo cucumber-shot"></div><p>黄瓜搭架 · 昨天</p></div>
+                <div class="photo-card" style="--r:2deg"><div class="photo leaf-shot"></div><p>采摘小白菜 500g</p></div>
+                <div class="photo-card" style="--r:-1deg"><div class="photo greenhouse-shot"></div><p>阳台箱空地整理</p></div>
+              </div>
+              <div class="cream-card" style="padding:14px;margin-top:14px"><h3>本周小结</h3><p>浇水 4 次，施肥 1 次，采摘 2 次。番茄进入坐果期，黄瓜即将连续采摘。</p></div>
+            </div>
+            <nav class="nav"><div class="nav-item">今日</div><div class="nav-item">菜园</div><div class="nav-item">日历</div><div class="nav-item active">记录</div></nav>
+          </div>
+        </div>
+      </article>
+
+      <article class="screen-card">
+        <div class="screen-title"><strong>添加种植</strong><span>从“选作物”开始</span></div>
+        <div class="phone">
+          <div class="status"><span>09:24</span><span>新增批次</span></div>
+          <div class="app">
+            <div class="scroll">
+              <div class="page-head"><div><div class="kicker">安排下一块地</div><h2>添加种植</h2></div><div class="round-btn">×</div></div>
+              <div class="sheet">
+                <div class="field"><span>地块</span><strong>阳台箱</strong></div>
+                <div class="field"><span>方式</span><strong>播种</strong></div>
+                <div class="field"><span>日期</span><strong>2026-07-01</strong></div>
+                <div class="crop-picker">
+                  <div class="crop-card active pakchoi"><div class="crop-copy">小白菜<br><span style="color:#6d7967;font-size:12px">30-45 天采收</span></div></div>
+                  <div class="crop-card lettuce"><div class="crop-copy">生菜<br><span style="color:#6d7967;font-size:12px">耐凉叶菜</span></div></div>
+                  <div class="crop-card herb"><div class="crop-copy">香菜<br><span style="color:#6d7967;font-size:12px">出苗较慢</span></div></div>
+                  <div class="crop-card water"><div class="crop-copy">空心菜<br><span style="color:#6d7967;font-size:12px">喜水耐热</span></div></div>
+                </div>
+                <div class="primary">生成种植计划</div>
+              </div>
+            </div>
+            <nav class="nav"><div class="nav-item">今日</div><div class="nav-item active">菜园</div><div class="nav-item">日历</div><div class="nav-item">记录</div></nav>
+          </div>
+        </div>
+      </article>
+
+      <article class="screen-card">
+        <div class="screen-title"><strong>记录操作</strong><span>像在菜园木牌上记一笔</span></div>
+        <div class="phone">
+          <div class="status"><span>09:24</span><span>快速记录</span></div>
+          <div class="app">
+            <div class="scroll">
+              <div class="page-head"><div><div class="kicker">今天做了什么</div><h2>记录操作</h2></div><div class="round-btn">×</div></div>
+              <div class="sheet">
+                <div class="garden-card" style="padding:12px;margin-bottom:12px">
+                  <div class="chips" style="margin:0"><span class="chip active">浇水</span><span class="chip">施肥</span><span class="chip">采摘</span></div>
+                </div>
+                <div class="field"><span>关联地块</span><strong>1 号畦 · 番茄</strong></div>
+                <div class="field"><span>时间</span><strong>今天 18:30</strong></div>
+                <div class="field"><span>用量</span><strong>浇透</strong></div>
+                <div class="cream-card" style="padding:14px;margin-top:12px;min-height:132px">
+                  <h3>备注</h3>
+                  <p>傍晚浇水，表土已干，坐果正常。拍照后可更新长势。</p>
+                </div>
+                <div class="garden-card" style="margin-top:12px;padding:12px">
+                  <div class="detail-map-photo" style="height:116px;background-size:230%;background-position:54% 35%;border-width:5px">
+                    <div class="photo-strip" style="padding:8px 10px;font-size:12px"><span>1 号畦 · 番茄</span><span>刚浇水</span></div>
+                  </div>
+                </div>
+                <div class="primary">保存记录</div>
+              </div>
+            </div>
+            <nav class="nav"><div class="nav-item active">今日</div><div class="nav-item">菜园</div><div class="nav-item">日历</div><div class="nav-item">记录</div></nav>
+          </div>
+        </div>
+      </article>
+
+      <article class="screen-card">
+        <div class="screen-title"><strong>添加地块</strong><span>先把真实菜地画进来</span></div>
+        <div class="phone">
+          <div class="status"><span>09:24</span><span>新地块</span></div>
+          <div class="app">
+            <div class="scroll">
+              <div class="page-head"><div><div class="kicker">菜园布局</div><h2>添加地块</h2></div><div class="round-btn">×</div></div>
+              <div class="sheet">
+                <div class="field"><span>名称</span><strong>西侧菜床</strong></div>
+                <div class="field"><span>种植方式</span><strong>露地菜床</strong></div>
+                <div class="field"><span>土壤</span><strong>壤土</strong></div>
+                <div class="field"><span>尺寸</span><strong>2.4m × 1.2m</strong></div>
+                <div class="garden-card" style="padding:14px;margin-top:12px">
+                  <h3 style="margin:0 0 10px">地块形状</h3>
+                  <div class="chips"><span class="chip active">长方菜床</span><span class="chip">种植箱</span><span class="chip">花盆组</span></div>
+                  <div class="detail-map-photo" style="height:210px;background-size:178%;background-position:63% 58%;border-width:5px">
+                    <div class="plot-glow" style="left:44%;top:34%;width:34%;height:28%;transform:rotate(-12deg)"></div>
+                    <div class="photo-strip"><span>预览 · 西侧菜床</span><span>空地</span></div>
+                  </div>
+                </div>
+                <div class="primary">创建地块</div>
+              </div>
+            </div>
+            <nav class="nav"><div class="nav-item">今日</div><div class="nav-item active">菜园</div><div class="nav-item">日历</div><div class="nav-item">记录</div></nav>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
