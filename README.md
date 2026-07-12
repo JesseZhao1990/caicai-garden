@@ -33,6 +33,21 @@ app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
+## 版本发布与升级
+
+- 源码和可安装 APK 都发布在公共仓库 `JesseZhao1990/caicai-garden`，APK 位于 GitHub Releases。
+- App 每次启动会自动检查最新正式版，“今日”页的“版本升级”卡片也支持手动检查。
+- 发现新版本后，App 会下载 APK、校验 GitHub 提供的 SHA-256 摘要，并交给 Android 系统安装器确认升级。
+
+发布新版本时：
+
+1. 更新 `app/build.gradle.kts` 中的 `versionCode` 和 `versionName`。
+2. 提交并推送代码。
+3. 创建与 `versionName` 一致的标签，例如 `git tag v1.1.0 && git push origin v1.1.0`。
+4. GitHub Actions 会构建固定签名的 Release APK，并发布到本仓库的 GitHub Releases。
+
+也可以在源码仓库的 Actions 页面手动运行 `Publish Android release` 工作流，发布当前 `versionName`。
+
 ## 当前边界
 
 - 第一版不含账号系统，数据只保存在本机。

@@ -51,6 +51,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.BiasAlignment
@@ -64,6 +65,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -84,6 +86,9 @@ import com.caicai.garden.data.TaskPriority
 import com.caicai.garden.data.TaskReminder
 import com.caicai.garden.data.WeatherForecast
 import com.caicai.garden.domain.PlantingInsight
+import com.caicai.garden.update.AppUpdateManager
+import com.caicai.garden.update.UpdateUiState
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -114,11 +119,30 @@ private val Stone = Color(0xFFD7D0BC)
 
 @Composable
 fun VisualGardenApp(viewModel: GardenViewModel) {
+    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val updateManager = remember { AppUpdateManager(context) }
+    val updateState by updateManager.state
+    val coroutineScope = rememberCoroutineScope()
     val message = viewModel.message
     var selectedTab by rememberSaveable { mutableStateOf(VisualTab.TODAY) }
     var activeSheet by remember { mutableStateOf<VisualSheet?>(null) }
     var selectedPlotId by rememberSaveable { mutableStateOf<String?>(null) }
+    var dismissedReleaseTag by rememberSaveable { mutableStateOf<String?>(null) }
+
+    val startUpdate: () -> Unit = {
+        coroutineScope.launch {
+            when (val state = updateState) {
+                is UpdateUiState.Available -> updateManager.downloadAndInstall(state.release)
+                is UpdateUiState.InstallPermissionRequired -> updateManager.continueInstall(state)
+                else -> updateManager.checkForUpdate()
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        updateManager.checkForUpdate()
+    }
 
     LaunchedEffect(message) {
         if (!message.isNullOrBlank()) {
@@ -162,7 +186,10 @@ fun VisualGardenApp(viewModel: GardenViewModel) {
                 VisualTab.TODAY -> VisualTodayScreen(
                     viewModel = viewModel,
                     onOpenMap = { selectedTab = VisualTab.GARDEN },
-                    onRefreshWeather = viewModel::refreshWeather
+                    onRefreshWeather = viewModel::refreshWeather,
+                    updateState = updateState,
+                    onCheckUpdate = { coroutineScope.launch { updateManager.checkForUpdate() } },
+                    onStartUpdate = startUpdate
                 )
 
                 VisualTab.GARDEN -> VisualGardenScreen(
@@ -219,6 +246,15 @@ fun VisualGardenApp(viewModel: GardenViewModel) {
         )
 
         null -> Unit
+    }
+
+    val availableUpdate = updateState as? UpdateUiState.Available
+    if (availableUpdate != null && dismissedReleaseTag != availableUpdate.release.tagName) {
+        AppUpdateDialog(
+            release = availableUpdate.release,
+            onDismiss = { dismissedReleaseTag = availableUpdate.release.tagName },
+            onUpdate = startUpdate
+        )
     }
 }
 
@@ -280,7 +316,10 @@ private fun GardenBottomNav(selectedTab: VisualTab, onSelectedTabChange: (Visual
 private fun VisualTodayScreen(
     viewModel: GardenViewModel,
     onOpenMap: () -> Unit,
-    onRefreshWeather: () -> Unit
+    onRefreshWeather: () -> Unit,
+    updateState: UpdateUiState,
+    onCheckUpdate: () -> Unit,
+    onStartUpdate: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -302,6 +341,13 @@ private fun VisualTodayScreen(
         }
         item {
             WeatherGlassCard(viewModel.weather, viewModel.weatherLoading, onRefreshWeather)
+        }
+        item {
+            AppUpdatePanel(
+                state = updateState,
+                onCheck = onCheckUpdate,
+                onUpdate = onStartUpdate
+            )
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
