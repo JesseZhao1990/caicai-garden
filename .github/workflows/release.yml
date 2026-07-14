@@ -63,7 +63,7 @@ jobs:
           if gh release view "$TAG_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG_NAME" "$APK#$ASSET_NAME" --repo "$GITHUB_REPOSITORY" --clobber
           else
-            NOTES_FILE="docs/releases/${TAG_NAME#v}.md"
+            NOTES_FILE="docs/releases/${TAG_NAME}.md"
             if [[ -f "$NOTES_FILE" ]]; then
               gh release create "$TAG_NAME" "$APK#$ASSET_NAME" \
                 --repo "$GITHUB_REPOSITORY" \
