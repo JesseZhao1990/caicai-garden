@@ -470,3 +470,20 @@ Debug APK：
 - `./gradlew :app:testDebugUnitTest :app:assembleDebug --no-daemon --console=plain` 通过，Debug APK 已保留数据覆盖安装到 `emulator-5554`。
 
 当前仍是高质量 2.5D 透视渲染，不是真正的 SceneView/Filament 3D 网格；但本轮已补齐用户指出的景深缩放、透视命中和正确遮挡关系。若后续切真 3D，仍需先补齐满足产品约束的 GLB 资产和完整编辑交互，不能直接启用现有低模 POC。
+
+## 18. 2026-07-14 v1.2.0 正式发布
+
+本节是当前最新发布状态，覆盖前文关于 `v1.1.0` 和“修改尚未提交”的旧描述。
+
+- App 版本：`versionCode = 3`、`versionName = 1.2.0`。
+- 功能提交：`13db698 Release garden growth and layout improvements`。
+- 正式 tag：`v1.2.0`，指向 `13db698d09f3915615a05fec3790b67ecf38175a`。
+- Release：[菜园管家 v1.2.0](https://github.com/JesseZhao1990/caicai-garden/releases/tag/v1.2.0)。
+- GitHub Actions：`Publish Android release` run `29345420104`，执行成功。
+- 正式 APK：`app-release.apk`，大小 `68,905,371` bytes。
+- SHA-256：`f8c8c4b1ab389a6a2aa4e4b3e87e221d46fb0e51a7c834129db8013aa3a52844`，本地下载计算值与 GitHub Release digest 一致。
+- APK 元数据：包名 `com.caicai.garden`、版本 `1.2.0 (3)`、minSdk 26、targetSdk 35。
+- APK 使用 v2 签名，证书 SHA-256 为 `5ea7bcef03b70be6ce88049a4e0dc7f0127ec5fddb20d53022e41129687c07a1`，与 v1.1.0 完全一致，可覆盖升级正式版。
+- 发布说明已补充为完整的 v1.2.0 功能清单。工作流 notes-file 路径修复提交为 `20673e2`，后续版本会自动读取 `docs/releases/vX.Y.Z.md`。
+
+发布前验证包括 14 个单元测试、Debug/Release 构建、Android Lint、YAML 解析、APK 元数据、APK 签名、Release digest 和线上 Release 状态，全部通过。
