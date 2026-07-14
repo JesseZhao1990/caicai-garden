@@ -14,6 +14,7 @@ import com.caicai.garden.data.TaskPriority
 import com.caicai.garden.data.TaskReminder
 import com.caicai.garden.data.TaskType
 import com.caicai.garden.data.WeatherForecast
+import com.caicai.garden.data.growthOffsetDays
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
@@ -27,8 +28,11 @@ data class PlantingInsight(
     val plot: Plot?,
     val crop: CropProfile,
     val rawDay: Int,
+    val methodOffsetDays: Int,
     val adjustedDay: Int,
+    val lifecycleProgress: Float,
     val stage: GrowthStage,
+    val visual: CropVisualState,
     val progressPercent: Int,
     val harvestWindow: String,
     val nextFocus: String
@@ -54,20 +58,29 @@ object GardenAdvisor {
     ): PlantingInsight {
         val crop = CropLibrary.byId(batch.cropId)
         val rawDay = daysSince(batch.startLocalDate(), today)
-        val adjustedDay = adjustedGrowthDay(rawDay, crop, weather)
-        val stage = stageFor(crop, adjustedDay)
+        val methodOffsetDays = batch.method.growthOffsetDays(crop)
+        val growthDay = rawDay + methodOffsetDays
+        val adjustedDay = adjustedGrowthDay(growthDay, crop, weather)
+        val visual = CropVisualLibrary.stateFor(crop, adjustedDay)
+        val stage = crop.stages[visual.stageIndex]
         val totalDays = max(crop.harvestEndDay, crop.stages.maxOf { it.toDay })
+        val lifecycleProgress = (growthDay.toFloat() / totalDays.toFloat()).coerceIn(0f, 1f)
         val progress = ((adjustedDay.toDouble() / totalDays.toDouble()) * 100).roundToInt().coerceIn(0, 100)
-        val harvestStart = batch.startLocalDate().plusDays(crop.harvestStartDay.toLong())
-        val harvestEnd = batch.startLocalDate().plusDays(crop.harvestEndDay.toLong())
+        val harvestStart = batch.startLocalDate()
+            .plusDays((crop.harvestStartDay - methodOffsetDays).coerceAtLeast(0).toLong())
+        val harvestEnd = batch.startLocalDate()
+            .plusDays((crop.harvestEndDay - methodOffsetDays).coerceAtLeast(0).toLong())
 
         return PlantingInsight(
             batch = batch,
             plot = state.plots.firstOrNull { it.id == batch.plotId },
             crop = crop,
             rawDay = rawDay,
+            methodOffsetDays = methodOffsetDays,
             adjustedDay = adjustedDay,
+            lifecycleProgress = lifecycleProgress,
             stage = stage,
+            visual = visual,
             progressPercent = progress,
             harvestWindow = "${harvestStart.monthValue}/${harvestStart.dayOfMonth} - ${harvestEnd.monthValue}/${harvestEnd.dayOfMonth}",
             nextFocus = stage.focus
@@ -128,13 +141,14 @@ object GardenAdvisor {
         val crop = CropLibrary.byId(batch.cropId)
         val plot = state.plots.firstOrNull { it.id == batch.plotId }
         val rawDay = daysSince(batch.startLocalDate(), today)
-        val adjustedDay = adjustedGrowthDay(rawDay, crop, weather)
+        val growthDay = rawDay + batch.method.growthOffsetDays(crop)
+        val adjustedDay = adjustedGrowthDay(growthDay, crop, weather)
         val stage = stageFor(crop, adjustedDay)
 
         return listOfNotNull(
             waterTask(state, batch, crop, plot, stage, weather, today),
-            fertilizeTask(state, batch, crop, plot, rawDay, weather, today),
-            harvestTask(state, batch, crop, plot, rawDay, today),
+            fertilizeTask(state, batch, crop, plot, growthDay, weather, today),
+            harvestTask(state, batch, crop, plot, growthDay, today),
             photoTask(state, batch, crop, plot, today),
             cropWeatherCheckTask(batch, crop, plot, weather, today)
         )
@@ -148,12 +162,13 @@ object GardenAdvisor {
         val crop = CropLibrary.byId(batch.cropId)
         val plot = state.plots.firstOrNull { it.id == batch.plotId }
         val rawDay = daysSince(batch.startLocalDate(), today)
+        val growthDay = rawDay + batch.method.growthOffsetDays(crop)
         val plotName = plot?.name ?: "未分配地块"
 
         return buildList {
-            val nextFeed = crop.feedingDays.firstOrNull { it > rawDay && it - rawDay <= 7 }
+            val nextFeed = crop.feedingDays.firstOrNull { it > growthDay && it - growthDay <= 7 }
             if (nextFeed != null) {
-                val due = batch.startLocalDate().plusDays(nextFeed.toLong())
+                val due = today.plusDays((nextFeed - growthDay).toLong())
                 add(
                     TaskReminder(
                         id = "future-feed-${batch.id}-$nextFeed",
@@ -169,9 +184,9 @@ object GardenAdvisor {
                 )
             }
 
-            val daysToHarvest = crop.harvestStartDay - rawDay
+            val daysToHarvest = crop.harvestStartDay - growthDay
             if (daysToHarvest in 1..7) {
-                val due = batch.startLocalDate().plusDays(crop.harvestStartDay.toLong())
+                val due = today.plusDays(daysToHarvest.toLong())
                 add(
                     TaskReminder(
                         id = "future-harvest-${batch.id}",
@@ -279,11 +294,11 @@ object GardenAdvisor {
         batch: PlantingBatch,
         crop: CropProfile,
         plot: Plot?,
-        rawDay: Int,
+        growthDay: Int,
         weather: WeatherForecast?,
         today: LocalDate
     ): TaskReminder? {
-        val dueWindow = crop.feedingDays.firstOrNull { rawDay in it..(it + 4) } ?: return null
+        val dueWindow = crop.feedingDays.firstOrNull { growthDay in it..(it + 4) } ?: return null
         val lastFertilize = lastRecordDate(state.records, batch.id, OperationType.FERTILIZE)
         val daysSinceFertilize = lastFertilize?.let { daysSince(it, today) } ?: 99
         if (daysSinceFertilize < 10) return null
@@ -300,7 +315,7 @@ object GardenAdvisor {
             priority = TaskPriority.MEDIUM,
             dueDate = today,
             title = "${plotName} ${crop.name} 进入追肥窗口",
-            detail = "当前约第 $rawDay 天，接近第 $dueWindow 天追肥节点。$rainAdvice",
+            detail = "当前估算生长第 $growthDay 天，接近第 $dueWindow 天追肥节点。$rainAdvice",
             actionLabel = "记录施肥"
         )
     }
@@ -310,17 +325,17 @@ object GardenAdvisor {
         batch: PlantingBatch,
         crop: CropProfile,
         plot: Plot?,
-        rawDay: Int,
+        growthDay: Int,
         today: LocalDate
     ): TaskReminder? {
-        if (rawDay < crop.harvestStartDay) return null
+        if (growthDay < crop.harvestStartDay) return null
 
         val lastHarvest = lastRecordDate(state.records, batch.id, OperationType.HARVEST)
         if (!crop.continuousHarvest && lastHarvest != null) return null
         if (crop.continuousHarvest && lastHarvest != null && daysSince(lastHarvest, today) < 2) return null
 
         val plotName = plot?.name ?: "未分配地块"
-        val priority = if (rawDay > crop.harvestEndDay) TaskPriority.HIGH else TaskPriority.MEDIUM
+        val priority = if (growthDay > crop.harvestEndDay) TaskPriority.HIGH else TaskPriority.MEDIUM
         val detail = if (crop.continuousHarvest) {
             "已经进入连续采收期，建议巡查成熟果，及时采收能促进后续生长。"
         } else {
@@ -477,11 +492,11 @@ object GardenAdvisor {
     }
 
     private fun adjustedGrowthDay(
-        rawDay: Int,
+        growthDay: Int,
         crop: CropProfile,
         weather: WeatherForecast?
     ): Int {
-        val today = weather?.today ?: return rawDay
+        val today = weather?.today ?: return growthDay
         val averageTemp = (today.maxTempC + today.minTempC) / 2.0
         val multiplier = when {
             averageTemp < crop.minGoodTemperature -> 0.9
@@ -489,7 +504,7 @@ object GardenAdvisor {
             averageTemp >= crop.minGoodTemperature && averageTemp <= crop.maxGoodTemperature -> 1.0
             else -> 1.0
         }
-        return max(0, (rawDay * multiplier).roundToInt())
+        return max(0, (growthDay * multiplier).roundToInt())
     }
 
     private fun lastRecordDate(

@@ -44,7 +44,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 1. 更新 `app/build.gradle.kts` 中的 `versionCode` 和 `versionName`。
 2. 提交并推送代码。
-3. 创建与 `versionName` 一致的标签，例如 `git tag v1.1.0 && git push origin v1.1.0`。
+3. 创建与 `versionName` 一致的标签，例如 `git tag v1.2.0 && git push origin v1.2.0`。
 4. GitHub Actions 会构建固定签名的 Release APK，并发布到本仓库的 GitHub Releases。
 
 也可以在源码仓库的 Actions 页面手动运行 `Publish Android release` 工作流，发布当前 `versionName`。

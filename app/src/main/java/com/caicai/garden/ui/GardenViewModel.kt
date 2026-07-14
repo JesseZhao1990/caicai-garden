@@ -23,6 +23,7 @@ import com.caicai.garden.data.TaskReminder
 import com.caicai.garden.data.WeatherForecast
 import com.caicai.garden.data.WeatherService
 import com.caicai.garden.data.defaultFarmTileRotation
+import com.caicai.garden.data.moveTile
 import com.caicai.garden.data.normalizeFarmTileRotation
 import com.caicai.garden.domain.GardenAdvisor
 import com.caicai.garden.domain.PlantingInsight
@@ -130,6 +131,10 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
             message = "日期格式需要是 YYYY-MM-DD"
             return
         }
+        if (parsedDate.isAfter(LocalDate.now())) {
+            message = "种植日期不能晚于今天"
+            return
+        }
         val crop = CropLibrary.byId(cropId)
         val batch = PlantingBatch(
             id = GardenRepository.newId(),
@@ -142,8 +147,16 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
             status = BatchStatus.ACTIVE
         )
         persist(dataState.copy(batches = dataState.batches + batch))
-        addSystemRecord(batch, if (method == PlantingMethod.TRANSPLANT) OperationType.TRANSPLANT else OperationType.SOW, "新建种植批次")
-        message = "已添加 ${crop.name}"
+        addSystemRecord(
+            batch,
+            when (method) {
+                PlantingMethod.SEED -> OperationType.SOW
+                PlantingMethod.TRANSPLANT -> OperationType.TRANSPLANT
+                PlantingMethod.CUTTING -> OperationType.CUTTING
+            },
+            "${method.label} · ${method.dateLabel} $parsedDate"
+        )
+        message = "已记录 ${crop.name}：${method.materialLabel}，${method.dateLabel} $parsedDate"
     }
 
     fun addOperation(batchId: String?, type: OperationType, amountLabel: String, note: String) {
@@ -233,15 +246,11 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
 
     fun moveFarmTile(fromRow: Int, fromColumn: Int, toRow: Int, toColumn: Int) {
         val layout = dataState.farmLayout
-        if (fromRow !in 0 until layout.rows || fromColumn !in 0 until layout.columns) return
-        if (toRow !in 0 until layout.rows || toColumn !in 0 until layout.columns) return
-        if (fromRow == toRow && fromColumn == toColumn) return
-
-        val movingTile = layout.tiles.firstOrNull { it.row == fromRow && it.column == fromColumn } ?: return
-        val nextTiles = layout.tiles
-            .filterNot { (it.row == fromRow && it.column == fromColumn) || (it.row == toRow && it.column == toColumn) }
-            .plus(movingTile.copy(row = toRow, column = toColumn))
-        persist(dataState.copy(farmLayout = layout.copy(tiles = nextTiles)))
+        val targetWasOccupied = layout.tiles.any { it.row == toRow && it.column == toColumn }
+        val nextLayout = layout.moveTile(fromRow, fromColumn, toRow, toColumn)
+        if (nextLayout == layout) return
+        persist(dataState.copy(farmLayout = nextLayout))
+        message = if (targetWasOccupied) "目标格已有内容，已交换位置" else "已移动到新位置"
     }
 
     fun rotateFarmTile(row: Int, column: Int, deltaDegrees: Float) {

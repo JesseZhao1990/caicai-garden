@@ -9,10 +9,15 @@ enum class GrowingStyle(val label: String) {
     BALCONY("阳台")
 }
 
-enum class PlantingMethod(val label: String) {
-    SEED("播种"),
-    TRANSPLANT("移栽"),
-    CUTTING("扦插")
+enum class PlantingMethod(
+    val label: String,
+    val materialLabel: String,
+    val dateLabel: String,
+    val predictionHint: String
+) {
+    SEED("种子播种", "种子", "播种日期", "从发芽第 0 天开始估算"),
+    TRANSPLANT("种苗移栽", "种苗", "移栽日期", "按该作物常见苗龄估算起始长势"),
+    CUTTING("插条扦插", "插条", "扦插日期", "从生根缓苗阶段开始估算")
 }
 
 enum class BatchStatus(val label: String) {
@@ -26,6 +31,7 @@ enum class OperationType(val label: String) {
     FERTILIZE("施肥"),
     SOW("播种"),
     TRANSPLANT("移栽"),
+    CUTTING("扦插"),
     WEED("除草"),
     PRUNE("修剪"),
     SUPPORT("搭架"),
@@ -99,8 +105,18 @@ data class CropProfile(
     val harvestEndDay: Int,
     val continuousHarvest: Boolean,
     val stages: List<GrowthStage>,
-    val careTips: List<String>
+    val careTips: List<String>,
+    val transplantGrowthOffsetDays: Int = 10,
+    val cuttingGrowthOffsetDays: Int = 5
 )
+
+fun PlantingMethod.growthOffsetDays(crop: CropProfile): Int {
+    return when (this) {
+        PlantingMethod.SEED -> 0
+        PlantingMethod.TRANSPLANT -> crop.transplantGrowthOffsetDays
+        PlantingMethod.CUTTING -> crop.cuttingGrowthOffsetDays
+    }
+}
 
 data class PlantingBatch(
     val id: String,
@@ -148,6 +164,31 @@ data class FarmLayout(
     val columns: Int = 8,
     val tiles: List<FarmTile> = emptyList()
 )
+
+fun FarmLayout.moveTile(
+    fromRow: Int,
+    fromColumn: Int,
+    toRow: Int,
+    toColumn: Int
+): FarmLayout {
+    if (fromRow !in 0 until rows || fromColumn !in 0 until columns) return this
+    if (toRow !in 0 until rows || toColumn !in 0 until columns) return this
+    if (fromRow == toRow && fromColumn == toColumn) return this
+
+    val movingIndex = tiles.indexOfFirst { it.row == fromRow && it.column == fromColumn }
+    if (movingIndex == -1) return this
+    val targetIndex = tiles.indexOfFirst { it.row == toRow && it.column == toColumn }
+
+    return copy(
+        tiles = tiles.mapIndexed { index, tile ->
+            when (index) {
+                movingIndex -> tile.copy(row = toRow, column = toColumn)
+                targetIndex -> tile.copy(row = fromRow, column = fromColumn)
+                else -> tile
+            }
+        }
+    )
+}
 
 data class GardenDataState(
     val gardens: List<Garden> = emptyList(),
@@ -209,7 +250,8 @@ object CropLibrary {
                 GrowthStage("开花坐果期", 41, 74, "稳定水分，减少落花，注意补充磷钾"),
                 GrowthStage("连续采收期", 75, 120, "成熟果及时采收，维持水肥供应")
             ),
-            careTips = listOf("坐果期避免忽干忽湿", "雨后注意通风和病害检查")
+            careTips = listOf("坐果期避免忽干忽湿", "雨后注意通风和病害检查"),
+            transplantGrowthOffsetDays = 14
         ),
         CropProfile(
             id = "cucumber",
@@ -229,7 +271,8 @@ object CropLibrary {
                 GrowthStage("开花结果期", 31, 41, "需水需肥增加，关注高温和授粉"),
                 GrowthStage("连续采收期", 42, 75, "1-2 天巡查一次，避免瓜条过老")
             ),
-            careTips = listOf("结果期缺水会影响口感", "高温天优先安排傍晚浇水")
+            careTips = listOf("结果期缺水会影响口感", "高温天优先安排傍晚浇水"),
+            transplantGrowthOffsetDays = 10
         ),
         CropProfile(
             id = "pepper",
@@ -249,7 +292,8 @@ object CropLibrary {
                 GrowthStage("开花结果期", 46, 69, "避免高温干旱，关注落花"),
                 GrowthStage("连续采收期", 70, 120, "成熟果分批采摘，减少植株负担")
             ),
-            careTips = listOf("忌长期积水", "结果期可少量多次追肥")
+            careTips = listOf("忌长期积水", "结果期可少量多次追肥"),
+            transplantGrowthOffsetDays = 16
         ),
         CropProfile(
             id = "eggplant",
@@ -269,7 +313,8 @@ object CropLibrary {
                 GrowthStage("开花坐果期", 46, 74, "保持水肥均衡，减少落花"),
                 GrowthStage("采收期", 75, 130, "果实膨大期保持稳定水分")
             ),
-            careTips = listOf("门茄坐住后需肥量上升", "干旱后猛浇水容易裂果")
+            careTips = listOf("门茄坐住后需肥量上升", "干旱后猛浇水容易裂果"),
+            transplantGrowthOffsetDays = 14
         ),
         CropProfile(
             id = "lettuce",
@@ -289,7 +334,8 @@ object CropLibrary {
                 GrowthStage("莲座期", 19, 34, "保持水肥充足，叶片快速展开"),
                 GrowthStage("采收期", 35, 55, "达到食用大小即可采收")
             ),
-            careTips = listOf("高温容易抽薹", "叶菜采前避免过量施肥")
+            careTips = listOf("高温容易抽薹", "叶菜采前避免过量施肥"),
+            transplantGrowthOffsetDays = 12
         ),
         CropProfile(
             id = "pakchoi",
@@ -309,7 +355,8 @@ object CropLibrary {
                 GrowthStage("旺长期", 16, 29, "保持水肥充足，促进叶片生长"),
                 GrowthStage("采收期", 30, 45, "可分批采收外层叶或整株采收")
             ),
-            careTips = listOf("干旱会影响叶片口感", "雨后注意菜心积水")
+            careTips = listOf("干旱会影响叶片口感", "雨后注意菜心积水"),
+            transplantGrowthOffsetDays = 10
         ),
         CropProfile(
             id = "spinach",
@@ -329,7 +376,8 @@ object CropLibrary {
                 GrowthStage("旺长期", 21, 34, "适度追肥，保持叶片生长"),
                 GrowthStage("采收期", 35, 55, "叶片达到食用大小即可采收")
             ),
-            careTips = listOf("高温季节容易抽薹", "采收前保持清洁浇水")
+            careTips = listOf("高温季节容易抽薹", "采收前保持清洁浇水"),
+            transplantGrowthOffsetDays = 10
         ),
         CropProfile(
             id = "water_spinach",
@@ -345,10 +393,13 @@ object CropLibrary {
             continuousHarvest = true,
             stages = listOf(
                 GrowthStage("缓苗/发芽期", 0, 10, "保持湿润，促进快速生根"),
-                GrowthStage("旺长期", 11, 29, "水肥充足，促进嫩梢生长"),
+                GrowthStage("快速生长期", 11, 20, "水肥充足，促进嫩梢生长"),
+                GrowthStage("成熟旺长期", 21, 29, "维持水肥，促进侧枝和可采嫩梢形成"),
                 GrowthStage("连续采收期", 30, 80, "采嫩梢后补水补肥，促发侧枝")
             ),
-            careTips = listOf("喜水耐热", "采后及时追肥可延长采收期")
+            careTips = listOf("喜水耐热", "采后及时追肥可延长采收期"),
+            transplantGrowthOffsetDays = 8,
+            cuttingGrowthOffsetDays = 6
         ),
         CropProfile(
             id = "cilantro",
@@ -368,7 +419,8 @@ object CropLibrary {
                 GrowthStage("旺长期", 26, 39, "保持水肥均衡"),
                 GrowthStage("采收期", 40, 60, "株高合适即可采收")
             ),
-            careTips = listOf("高温容易抽薹", "种子可轻搓破壳提高出苗")
+            careTips = listOf("高温容易抽薹", "种子可轻搓破壳提高出苗"),
+            transplantGrowthOffsetDays = 12
         ),
         CropProfile(
             id = "scallion",
@@ -388,7 +440,8 @@ object CropLibrary {
                 GrowthStage("旺长期", 46, 59, "保持水肥，适当培土"),
                 GrowthStage("采收期", 60, 110, "按需采收，采后促发新叶")
             ),
-            careTips = listOf("不耐长期积水", "采收后可轻追肥")
+            careTips = listOf("不耐长期积水", "采收后可轻追肥"),
+            transplantGrowthOffsetDays = 14
         ),
         CropProfile(
             id = "chive",
@@ -404,10 +457,13 @@ object CropLibrary {
             continuousHarvest = true,
             stages = listOf(
                 GrowthStage("缓苗期", 0, 20, "少割少动，促进根系建立"),
-                GrowthStage("旺长期", 21, 59, "保持水肥，促进叶片健壮"),
+                GrowthStage("快速生长期", 21, 40, "保持水肥，促进叶片健壮"),
+                GrowthStage("成熟蓄养期", 41, 59, "继续养根壮叶，为首次采收积累长势"),
                 GrowthStage("连续采收期", 60, 150, "割后追肥补水，留足恢复时间")
             ),
-            careTips = listOf("割后不要立刻大水漫灌", "长期采收需补充有机肥")
+            careTips = listOf("割后不要立刻大水漫灌", "长期采收需补充有机肥"),
+            transplantGrowthOffsetDays = 14,
+            cuttingGrowthOffsetDays = 7
         ),
         CropProfile(
             id = "radish",
@@ -427,7 +483,8 @@ object CropLibrary {
                 GrowthStage("肉质根膨大期", 21, 54, "水分稳定，少施过量氮肥"),
                 GrowthStage("采收期", 55, 80, "达到品种大小后及时采收")
             ),
-            careTips = listOf("忽干忽湿易裂根", "过量氮肥会影响根膨大")
+            careTips = listOf("忽干忽湿易裂根", "过量氮肥会影响根膨大"),
+            transplantGrowthOffsetDays = 8
         ),
         CropProfile(
             id = "carrot",
@@ -447,7 +504,8 @@ object CropLibrary {
                 GrowthStage("肉质根膨大期", 36, 79, "水分稳定，避免板结"),
                 GrowthStage("采收期", 80, 110, "根肩明显膨大后采收")
             ),
-            careTips = listOf("土壤过硬会影响根形", "忌鲜肥过多")
+            careTips = listOf("土壤过硬会影响根形", "忌鲜肥过多"),
+            transplantGrowthOffsetDays = 10
         ),
         CropProfile(
             id = "yardlong_bean",
@@ -467,7 +525,8 @@ object CropLibrary {
                 GrowthStage("开花结荚期", 36, 54, "保持水分稳定，少量追肥"),
                 GrowthStage("连续采收期", 55, 95, "嫩荚及时采摘，促进继续开花")
             ),
-            careTips = listOf("开花期避免大水冲灌", "采收不及时会影响后续结荚")
+            careTips = listOf("开花期避免大水冲灌", "采收不及时会影响后续结荚"),
+            transplantGrowthOffsetDays = 12
         ),
         CropProfile(
             id = "zucchini",
@@ -487,7 +546,8 @@ object CropLibrary {
                 GrowthStage("开花结果期", 33, 44, "关注授粉和水分稳定"),
                 GrowthStage("连续采收期", 45, 80, "嫩瓜及时采收，防止过大消耗")
             ),
-            careTips = listOf("连阴雨需关注授粉", "采摘越及时越利于连续结果")
+            careTips = listOf("连阴雨需关注授粉", "采摘越及时越利于连续结果"),
+            transplantGrowthOffsetDays = 12
         )
     )
 

@@ -54,11 +54,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import com.caicai.garden.data.CropProfile
 import com.caicai.garden.data.FarmTile
 import com.caicai.garden.data.FarmTileType
 import com.caicai.garden.domain.PlantingInsight
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -67,6 +67,10 @@ import kotlin.math.sin
 private const val FARM_ASSET_MIN_SCALE = 1f
 private const val FARM_ASSET_MAX_SCALE = 2.4f
 private const val FARM_WIND_CYCLE_MILLIS = 9_600
+private const val FARM_TERRAIN_ASSET_SCALE = 1.72f
+private const val FARM_TARGET_FRAME_ASSET_SCALE = 1.72f
+private const val FARM_FAR_DEPTH_SCALE = 0.88f
+private const val FARM_NEAR_DEPTH_SCALE = 1.08f
 
 private enum class FarmAssetGestureMode {
     TileDrag,
@@ -83,7 +87,6 @@ fun FarmAssetBoard(
     columns: Int,
     tilesByCell: Map<Pair<Int, Int>, FarmTile>,
     insightsByBatch: Map<String, PlantingInsight>,
-    selectedCell: Pair<Int, Int>?,
     interactionKey: String?,
     boardHeight: Dp,
     onCellClick: (Int, Int) -> Unit,
@@ -102,7 +105,7 @@ fun FarmAssetBoard(
     val currentOnTileMove by rememberUpdatedState(onTileMove)
     val currentOnTileSelect by rememberUpdatedState(onTileSelect)
 
-    val assetPaths = remember(rows, columns, tilesByCell, insightsByBatch, selectedCell) {
+    val assetPaths = remember(rows, columns, tilesByCell, insightsByBatch) {
         buildFarmAssetPaths(tilesByCell, insightsByBatch)
     }
     val bitmaps = rememberFarmBitmaps(assetPaths)
@@ -343,8 +346,14 @@ fun FarmAssetBoard(
                 )
                 drawFarmAssetBackground(bitmaps)
                 drawFarmEnvironment(bitmaps, metrics)
-                drawFarmGridBase(bitmaps, metrics, rows, columns)
             }
+            FarmTerrainLayer(
+                rows = rows,
+                columns = columns,
+                bitmaps = bitmaps,
+                tilesByCell = tilesByCell,
+                draggingCell = draggingCell
+            )
             FarmAnimatedTileLayer(
                 rows = rows,
                 columns = columns,
@@ -353,7 +362,6 @@ fun FarmAssetBoard(
                 insightsByBatch = insightsByBatch,
                 draggingCell = draggingCell,
                 dragOffset = dragOffset,
-                selectedCell = selectedCell,
                 dragTargetCell = dragTargetCell
             )
         }
@@ -372,6 +380,32 @@ fun FarmAssetBoard(
 }
 
 @Composable
+private fun FarmTerrainLayer(
+    rows: Int,
+    columns: Int,
+    bitmaps: Map<String, Bitmap>,
+    tilesByCell: Map<Pair<Int, Int>, FarmTile>,
+    draggingCell: Pair<Int, Int>?
+) {
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val metrics = farmAssetMetrics(
+            width = size.width,
+            height = size.height,
+            rows = rows,
+            columns = columns
+        )
+        drawFarmTerrain(
+            bitmaps = bitmaps,
+            metrics = metrics,
+            rows = rows,
+            columns = columns,
+            tilesByCell = tilesByCell,
+            draggingCell = draggingCell
+        )
+    }
+}
+
+@Composable
 private fun FarmAnimatedTileLayer(
     rows: Int,
     columns: Int,
@@ -380,7 +414,6 @@ private fun FarmAnimatedTileLayer(
     insightsByBatch: Map<String, PlantingInsight>,
     draggingCell: Pair<Int, Int>?,
     dragOffset: Offset,
-    selectedCell: Pair<Int, Int>?,
     dragTargetCell: Pair<Int, Int>?
 ) {
     val windTransition = rememberInfiniteTransition(label = "farm-wind")
@@ -414,11 +447,8 @@ private fun FarmAnimatedTileLayer(
             dragOffset = dragOffset,
             windCycle = windCycle
         )
-        selectedCell?.let { cell ->
-            drawSelection(bitmaps, metrics, cell.first, cell.second, selected = true)
-        }
         dragTargetCell?.let { cell ->
-            drawSelection(bitmaps, metrics, cell.first, cell.second, selected = false)
+            drawTargetCell(bitmaps, metrics, cell.first, cell.second)
         }
     }
 }
@@ -512,7 +542,6 @@ private fun buildFarmAssetPaths(
         add("sprites/terrain/grass_tile.png")
         add("sprites/terrain/empty_soil_tile.png")
         add("sprites/terrain/raised_bed_soil.png")
-        add("sprites/terrain/selected_frame.png")
         add("sprites/terrain/target_cell_frame.png")
         add("sprites/terrain/stone_path_tile.png")
         add("sprites/terrain/watered_soil_tile.png")
@@ -534,9 +563,11 @@ private fun buildFarmAssetPaths(
                 FarmTileType.RAISED_BED -> {
                     val insight = tile.batchId?.let(insightsByBatch::get)
                     if (insight != null) {
-                        val cropName = cropSpriteNameFor(insight.crop)
-                        val stage = cropSpriteStageFor(insight.progressPercent)
-                        add("sprites/crops_no_soil/$cropName/$stage.png")
+                        val visual = insight.visual
+                        add(
+                            "sprites/crops_no_soil/${visual.assetCropName}/" +
+                                "${visual.spriteStage.assetName}.png"
+                        )
                     }
                 }
 
@@ -552,27 +583,63 @@ private fun buildFarmAssetPaths(
     }
 }
 
+private data class FarmCellProjection(
+    val center: Offset,
+    val scale: Float
+)
+
 private data class FarmAssetMetrics(
     val width: Float,
     val height: Float,
     val centerX: Float,
     val topY: Float,
     val tileWidth: Float,
-    val tileHeight: Float
+    val tileHeight: Float,
+    val maxDepth: Float
 ) {
-    fun cellCenter(row: Int, column: Int): Offset {
-        return Offset(
-            x = centerX + (column - row) * tileWidth * 0.5f,
-            y = topY + (row + column) * tileHeight * 0.5f
+    fun cellProjection(row: Int, column: Int): FarmCellProjection {
+        val depth = (row + column).toFloat()
+        val normalizedDepth = (depth / maxDepth).coerceIn(0f, 1f)
+        val scale = FARM_FAR_DEPTH_SCALE +
+            (FARM_NEAR_DEPTH_SCALE - FARM_FAR_DEPTH_SCALE) * normalizedDepth
+        val depthOffset = tileHeight * 0.5f * (
+            FARM_FAR_DEPTH_SCALE * depth +
+                (FARM_NEAR_DEPTH_SCALE - FARM_FAR_DEPTH_SCALE) * depth * depth /
+                (2f * maxDepth)
+            )
+        return FarmCellProjection(
+            center = Offset(
+                x = centerX + (column - row) * tileWidth * 0.5f * scale,
+                y = topY + depthOffset
+            ),
+            scale = scale
         )
     }
 
+    fun cellCenter(row: Int, column: Int): Offset = cellProjection(row, column).center
+
     fun cellAt(offset: Offset, rows: Int, columns: Int): Pair<Int, Int>? {
-        val dx = (offset.x - centerX) / (tileWidth * 0.5f)
-        val dy = (offset.y - topY) / (tileHeight * 0.5f)
-        val column = ((dy + dx) * 0.5f).roundToInt()
-        val row = ((dy - dx) * 0.5f).roundToInt()
-        return if (row in 0 until rows && column in 0 until columns) row to column else null
+        var bestCell: Pair<Int, Int>? = null
+        var bestScore = Float.POSITIVE_INFINITY
+        var bestDepth = -1
+        for (row in 0 until rows) {
+            for (column in 0 until columns) {
+                val projection = cellProjection(row, column)
+                val halfWidth = tileWidth * 0.5f * projection.scale
+                val halfHeight = tileHeight * 0.5f * projection.scale
+                val score = abs(offset.x - projection.center.x) / halfWidth +
+                    abs(offset.y - projection.center.y) / halfHeight
+                val depth = row + column
+                val isBetter = score < bestScore - 0.001f ||
+                    (abs(score - bestScore) <= 0.001f && depth > bestDepth)
+                if (score <= 1.12f && isBetter) {
+                    bestCell = row to column
+                    bestScore = score
+                    bestDepth = depth
+                }
+            }
+        }
+        return bestCell
     }
 }
 
@@ -586,7 +653,8 @@ private fun farmAssetMetrics(width: Float, height: Float, rows: Int, columns: In
         centerX = width * 0.50f,
         topY = height * 0.31f,
         tileWidth = tileWidth,
-        tileHeight = tileHeight
+        tileHeight = tileHeight,
+        maxDepth = (rows + columns - 2).coerceAtLeast(1).toFloat()
     )
 }
 
@@ -617,27 +685,51 @@ private fun DrawScope.drawFarmEnvironment(bitmaps: Map<String, Bitmap>, metrics:
 
 private data class DecorationAsset(val path: String, val x: Float, val y: Float, val size: Float)
 
-private fun DrawScope.drawFarmGridBase(
+private fun DrawScope.drawFarmTerrain(
     bitmaps: Map<String, Bitmap>,
     metrics: FarmAssetMetrics,
     rows: Int,
-    columns: Int
+    columns: Int,
+    tilesByCell: Map<Pair<Int, Int>, FarmTile>,
+    draggingCell: Pair<Int, Int>?
 ) {
-    val grass = bitmaps["sprites/terrain/grass_tile.png"]
     for (diagonal in 0 until rows + columns - 1) {
         for (row in 0 until rows) {
             val column = diagonal - row
             if (column !in 0 until columns) continue
-            val center = metrics.cellCenter(row, column)
-            drawBitmapCentered(
-                bitmap = grass,
-                center = center,
-                width = metrics.tileWidth * 1.38f,
-                height = metrics.tileWidth * 1.38f,
-                alpha = 0.94f
+            val cell = row to column
+            val tile = tilesByCell[cell]?.takeUnless { draggingCell == cell }
+            val isSoil = tile?.type == FarmTileType.RAISED_BED
+            val projection = metrics.cellProjection(row, column)
+            drawTerrainTile(
+                bitmaps = bitmaps,
+                metrics = metrics,
+                center = projection.center,
+                cellScale = projection.scale,
+                isSoil = isSoil
             )
         }
     }
+}
+
+private fun DrawScope.drawTerrainTile(
+    bitmaps: Map<String, Bitmap>,
+    metrics: FarmAssetMetrics,
+    center: Offset,
+    cellScale: Float,
+    isSoil: Boolean
+) {
+    val yOffset = if (isSoil) metrics.tileHeight * 0.03f * cellScale else 0f
+    drawBitmapCentered(
+        bitmap = bitmaps[
+            if (isSoil) "sprites/terrain/empty_soil_tile.png"
+            else "sprites/terrain/grass_tile.png"
+        ],
+        center = center.copy(y = center.y + yOffset),
+        width = metrics.tileWidth * FARM_TERRAIN_ASSET_SCALE * cellScale,
+        height = metrics.tileWidth * FARM_TERRAIN_ASSET_SCALE * cellScale,
+        alpha = if (isSoil) 1f else 0.94f
+    )
 }
 
 private fun DrawScope.drawFarmTiles(
@@ -662,92 +754,126 @@ private fun DrawScope.drawFarmTiles(
                 draggingTile = tile
                 continue
             }
-            val center = metrics.cellCenter(row, column)
-            drawFarmTileAsset(bitmaps, metrics, center, tile, insightsByBatch, windCycle)
+            val projection = metrics.cellProjection(row, column)
+            drawFarmTileContent(
+                bitmaps = bitmaps,
+                metrics = metrics,
+                center = projection.center,
+                cellScale = projection.scale,
+                tile = tile,
+                insightsByBatch = insightsByBatch,
+                windCycle = windCycle
+            )
         }
     }
     draggingTile?.let { tile ->
-        val center = metrics.cellCenter(tile.row, tile.column) + dragOffset
+        val projection = metrics.cellProjection(tile.row, tile.column)
+        val center = projection.center + dragOffset
         drawBitmapCentered(
             bitmap = bitmaps["sprites/effects/soft_shadow_blob.png"],
-            center = center.copy(y = center.y + metrics.tileHeight * 0.24f),
-            width = metrics.tileWidth * 1.36f,
-            height = metrics.tileHeight * 1.12f,
+            center = center.copy(y = center.y + metrics.tileHeight * 0.24f * projection.scale),
+            width = metrics.tileWidth * 1.36f * projection.scale,
+            height = metrics.tileHeight * 1.12f * projection.scale,
             alpha = 0.40f
         )
-        drawFarmTileAsset(bitmaps, metrics, center, tile, insightsByBatch, windCycle)
+        if (tile.type == FarmTileType.RAISED_BED) {
+            drawTerrainTile(
+                bitmaps = bitmaps,
+                metrics = metrics,
+                center = center,
+                cellScale = projection.scale,
+                isSoil = true
+            )
+        }
+        drawFarmTileContent(
+            bitmaps = bitmaps,
+            metrics = metrics,
+            center = center,
+            cellScale = projection.scale,
+            tile = tile,
+            insightsByBatch = insightsByBatch,
+            windCycle = windCycle
+        )
     }
 }
 
-private fun DrawScope.drawFarmTileAsset(
+private fun DrawScope.drawFarmTileContent(
     bitmaps: Map<String, Bitmap>,
     metrics: FarmAssetMetrics,
     center: Offset,
+    cellScale: Float,
     tile: FarmTile,
     insightsByBatch: Map<String, PlantingInsight>,
     windCycle: Float
 ) {
     when (tile.type) {
-        FarmTileType.RAISED_BED -> drawRaisedBedTile(bitmaps, metrics, center, tile, insightsByBatch, windCycle)
+        FarmTileType.RAISED_BED -> drawRaisedBedCrop(
+            bitmaps,
+            metrics,
+            center,
+            cellScale,
+            tile,
+            insightsByBatch,
+            windCycle
+        )
         FarmTileType.GREENHOUSE -> Unit
         FarmTileType.TOOL_SHED -> Unit
-        FarmTileType.SIGN -> drawStructure(bitmaps, metrics, center, "sprites/structures/blank_label_stake.png", tile.rotationDegrees, 1.18f)
-        FarmTileType.IRRIGATION -> drawStructure(bitmaps, metrics, center, "sprites/structures/irrigation_sprinkler.png", tile.rotationDegrees, 1.08f)
-        FarmTileType.PATH -> drawStructure(bitmaps, metrics, center, "sprites/terrain/stone_path_tile.png", tile.rotationDegrees, 1.32f)
-        FarmTileType.FENCE -> drawStructure(bitmaps, metrics, center, "sprites/structures/wood_fence_straight.png", tile.rotationDegrees, 1.30f)
+        FarmTileType.SIGN -> drawStructure(bitmaps, metrics, center, cellScale, "sprites/structures/blank_label_stake.png", tile.rotationDegrees, 1.18f)
+        FarmTileType.IRRIGATION -> drawStructure(bitmaps, metrics, center, cellScale, "sprites/structures/irrigation_sprinkler.png", tile.rotationDegrees, 1.08f)
+        FarmTileType.PATH -> drawStructure(bitmaps, metrics, center, cellScale, "sprites/terrain/stone_path_tile.png", tile.rotationDegrees, 1.32f)
+        FarmTileType.FENCE -> drawStructure(bitmaps, metrics, center, cellScale, "sprites/structures/wood_fence_straight.png", tile.rotationDegrees, 1.30f)
         FarmTileType.GRASS -> Unit
     }
 }
 
-private fun DrawScope.drawRaisedBedTile(
+private fun DrawScope.drawRaisedBedCrop(
     bitmaps: Map<String, Bitmap>,
     metrics: FarmAssetMetrics,
     center: Offset,
+    cellScale: Float,
     tile: FarmTile,
     insightsByBatch: Map<String, PlantingInsight>,
     windCycle: Float
 ) {
-    drawBitmapCentered(
-        bitmap = bitmaps["sprites/terrain/empty_soil_tile.png"],
-        center = center.copy(y = center.y + metrics.tileHeight * 0.03f),
-        width = metrics.tileWidth * 1.38f,
-        height = metrics.tileWidth * 1.38f,
-        rotationDegrees = tile.rotationDegrees
-    )
-
     val insight = tile.batchId?.let(insightsByBatch::get) ?: return
-    val cropName = cropSpriteNameFor(insight.crop)
-    val stage = cropSpriteStageFor(insight.progressPercent)
-    val soilContactY = center.y + metrics.tileHeight * 0.08f
-    val cropWidth = metrics.tileWidth * cropWidthFactor(cropName, stage)
+    val visual = insight.visual
+    val stage = visual.spriteStage.assetName
+    val scaledTileWidth = metrics.tileWidth * cellScale
+    val scaledTileHeight = metrics.tileHeight * cellScale
+    val soilContactY = center.y + scaledTileHeight * 0.08f
+    val cropWidth = scaledTileWidth * visual.canopyWidthTiles
     val windRotation = cropWindRotationDegrees(
         cycle = windCycle,
         row = tile.row,
         column = tile.column,
-        cropName = cropName,
-        stage = stage
+        stage = stage,
+        windFlex = visual.windFlex
     )
     drawBitmapCentered(
         bitmap = bitmaps["sprites/effects/soft_shadow_blob.png"],
-        center = center.copy(y = soilContactY + metrics.tileHeight * 0.04f),
-        width = cropWidth * 0.58f,
-        height = metrics.tileHeight * 0.18f,
+        center = center.copy(y = soilContactY + scaledTileHeight * 0.04f),
+        width = cropWidth * visual.shadowWidthFactor,
+        height = scaledTileHeight * 0.18f,
         alpha = 0.18f
     )
     drawBitmapBottomAligned(
-        bitmap = bitmaps["sprites/crops_no_soil/$cropName/$stage.png"],
+        bitmap = bitmaps["sprites/crops_no_soil/${visual.assetCropName}/$stage.png"],
         centerX = center.x,
         bottomY = soilContactY,
         contentWidth = cropWidth,
+        heightScale = visual.heightScale,
         rotationDegrees = tile.rotationDegrees + windRotation,
         primaryContentOnly = true
     )
     if (stage == "harvest") {
         drawBitmapCentered(
             bitmap = bitmaps["sprites/widgets/mature_ready_badge.png"],
-            center = center.copy(x = center.x + metrics.tileWidth * 0.34f, y = center.y - metrics.tileHeight * 1.04f),
-            width = metrics.tileWidth * 0.46f,
-            height = metrics.tileWidth * 0.46f
+            center = center.copy(
+                x = center.x + scaledTileWidth * 0.46f,
+                y = center.y - scaledTileHeight * 1.22f
+            ),
+            width = scaledTileWidth * 0.38f,
+            height = scaledTileWidth * 0.38f
         )
     }
 }
@@ -756,8 +882,8 @@ private fun cropWindRotationDegrees(
     cycle: Float,
     row: Int,
     column: Int,
-    cropName: String,
-    stage: String
+    stage: String,
+    windFlex: Float
 ): Float {
     val waveDelay = (row + column) * 0.014f + ((row * 13 + column * 7) % 5) * 0.006f
     val localCycle = (cycle - waveDelay + 1f) % 1f
@@ -783,13 +909,8 @@ private fun cropWindRotationDegrees(
         "mature" -> 2.8f
         else -> 3.2f
     }
-    val cropFlex = when (cropName) {
-        "bok_choy", "lettuce", "cabbage", "spinach", "kale" -> 0.78f
-        "tomato", "cherry_tomato", "cucumber", "green_bean", "corn" -> 1.08f
-        else -> 0.92f
-    }
     val plantVariation = 0.92f + ((row * 11 + column * 17) % 7) * 0.025f
-    return normalizedSway * stageAmplitude * cropFlex * plantVariation
+    return normalizedSway * stageAmplitude * windFlex * plantVariation
 }
 
 private fun smoothStep(value: Float): Float {
@@ -797,51 +918,37 @@ private fun smoothStep(value: Float): Float {
     return clamped * clamped * (3f - 2f * clamped)
 }
 
-private fun cropWidthFactor(cropName: String, stage: String): Float {
-    val base = when (stage) {
-        "seedling" -> 0.30f
-        "young" -> 0.42f
-        "mature" -> 0.54f
-        else -> 0.62f
-    }
-    return when (cropName) {
-        "bok_choy", "lettuce", "cabbage", "spinach", "kale" -> base * 0.92f
-        "tomato", "cherry_tomato", "cucumber", "green_bean" -> base * 0.96f
-        else -> base
-    }
-}
-
 private fun DrawScope.drawStructure(
     bitmaps: Map<String, Bitmap>,
     metrics: FarmAssetMetrics,
     center: Offset,
+    cellScale: Float,
     path: String,
     rotationDegrees: Float,
     scale: Float
 ) {
     drawBitmapCentered(
         bitmap = bitmaps[path],
-        center = center.copy(y = center.y - metrics.tileHeight * 0.32f),
-        width = metrics.tileWidth * scale,
-        height = metrics.tileWidth * scale,
+        center = center.copy(y = center.y - metrics.tileHeight * 0.32f * cellScale),
+        width = metrics.tileWidth * scale * cellScale,
+        height = metrics.tileWidth * scale * cellScale,
         rotationDegrees = rotationDegrees
     )
 }
 
-private fun DrawScope.drawSelection(
+private fun DrawScope.drawTargetCell(
     bitmaps: Map<String, Bitmap>,
     metrics: FarmAssetMetrics,
     row: Int,
-    column: Int,
-    selected: Boolean
+    column: Int
 ) {
-    val center = metrics.cellCenter(row, column)
+    val projection = metrics.cellProjection(row, column)
     drawBitmapCentered(
-        bitmap = bitmaps[if (selected) "sprites/terrain/selected_frame.png" else "sprites/terrain/target_cell_frame.png"],
-        center = center,
-        width = metrics.tileWidth * 1.48f,
-        height = metrics.tileWidth * 1.48f,
-        alpha = if (selected) 1f else 0.88f
+        bitmap = bitmaps["sprites/terrain/target_cell_frame.png"],
+        center = projection.center,
+        width = metrics.tileWidth * FARM_TARGET_FRAME_ASSET_SCALE * projection.scale,
+        height = metrics.tileWidth * FARM_TARGET_FRAME_ASSET_SCALE * projection.scale,
+        alpha = 0.88f
     )
 }
 
@@ -881,13 +988,15 @@ private fun DrawScope.drawBitmapBottomAligned(
     centerX: Float,
     bottomY: Float,
     contentWidth: Float,
+    heightScale: Float = 1f,
     rotationDegrees: Float = 0f,
     alpha: Float = 1f,
     primaryContentOnly: Boolean = false
 ) {
     if (bitmap == null) return
     val source = if (primaryContentOnly) bitmap.alphaPrimaryContentBounds() else bitmap.alphaContentBounds()
-    val contentHeight = contentWidth * source.height().toFloat() / source.width().coerceAtLeast(1)
+    val contentHeight = contentWidth * source.height().toFloat() /
+        source.width().coerceAtLeast(1) * heightScale
     val destination = RectF(
         centerX - contentWidth * 0.5f,
         bottomY - contentHeight,
@@ -1052,43 +1161,5 @@ private fun DrawScope.drawCroppedBitmap(bitmap: Bitmap, destination: RectF) {
     }
     drawIntoCanvas { canvas ->
         canvas.nativeCanvas.drawBitmap(bitmap, src, destination, paint)
-    }
-}
-
-private fun cropSpriteStageFor(progressPercent: Int): String {
-    return when {
-        progressPercent < 24 -> "seedling"
-        progressPercent < 55 -> "young"
-        progressPercent < 88 -> "mature"
-        else -> "harvest"
-    }
-}
-
-private fun cropSpriteNameFor(crop: CropProfile): String {
-    return when (crop.id) {
-        "tomato" -> "tomato"
-        "cucumber" -> "cucumber"
-        "pepper" -> "chili_pepper"
-        "eggplant" -> "eggplant"
-        "lettuce" -> "lettuce"
-        "pakchoi" -> "bok_choy"
-        "spinach" -> "spinach"
-        "water_spinach" -> "spinach"
-        "cilantro" -> "cilantro"
-        "scallion" -> "scallion"
-        "chive" -> "scallion"
-        "radish" -> "daikon"
-        "carrot" -> "carrot"
-        "yardlong_bean" -> "green_bean"
-        "zucchini" -> "zucchini"
-        else -> when {
-            crop.category.contains("瓜") -> "zucchini"
-            crop.category.contains("豆") -> "green_bean"
-            crop.category.contains("根") -> "daikon"
-            crop.category.contains("葱") -> "scallion"
-            crop.category.contains("茄果") -> "tomato"
-            crop.category.contains("香") -> "basil"
-            else -> "lettuce"
-        }
     }
 }

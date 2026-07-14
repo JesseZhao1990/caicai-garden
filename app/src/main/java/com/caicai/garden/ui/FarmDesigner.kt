@@ -165,7 +165,6 @@ fun FarmDesignerSection(
                 columns = layout.columns,
                 tilesByCell = tilesByCell,
                 insightsByBatch = insightsByBatch,
-                selectedCell = pendingMoveCell ?: selectedCell,
                 interactionKey = selectedTool,
                 boardHeight = boardHeight,
                 onTileMove = { fromRow, fromColumn, toRow, toColumn ->
@@ -1801,7 +1800,7 @@ private fun FarmToolPicker(
                     onClick = { onSelectedToolChange(FarmTool.Plant(batch.id).toToolKey()) },
                     label = {
                         Text(
-                            "${crop.name}${batch.variety.takeIf { it.isNotBlank() }?.let { " · $it" } ?: ""}",
+                            "${crop.name}${batch.variety.takeIf { it.isNotBlank() }?.let { " · $it" } ?: ""} · ${batch.method.materialLabel}",
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -1856,7 +1855,14 @@ private fun FarmSelectionPanel(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            "${insight.plot?.name ?: "未分配地块"} · 第 ${insight.rawDay} 天 · ${insight.stage.name} · ${insight.progressPercent}%",
+                            "${insight.batch.method.materialLabel} · ${insight.batch.method.dateLabel} ${insight.batch.startDate} · 已过 ${insight.rawDay} 天",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            "估算生长第 ${insight.adjustedDay} 天 · ${insight.stage.name} · ${insight.progressPercent}%",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,

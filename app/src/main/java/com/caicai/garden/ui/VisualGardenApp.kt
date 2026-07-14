@@ -85,6 +85,7 @@ import com.caicai.garden.data.Plot
 import com.caicai.garden.data.TaskPriority
 import com.caicai.garden.data.TaskReminder
 import com.caicai.garden.data.WeatherForecast
+import com.caicai.garden.data.growthOffsetDays
 import com.caicai.garden.domain.PlantingInsight
 import com.caicai.garden.update.AppUpdateManager
 import com.caicai.garden.update.UpdateUiState
@@ -162,7 +163,7 @@ fun VisualGardenApp(viewModel: GardenViewModel) {
         floatingActionButton = {
             when (selectedTab) {
                 VisualTab.TODAY, VisualTab.RECORDS -> GardenFab("记录") { activeSheet = VisualSheet.ADD_OPERATION }
-                VisualTab.GARDEN -> Unit
+                VisualTab.GARDEN -> GardenFab("种菜") { activeSheet = VisualSheet.ADD_BATCH }
                 VisualTab.CALENDAR -> GardenFab("加地块") { activeSheet = VisualSheet.ADD_PLOT }
             }
         },
@@ -406,7 +407,7 @@ private fun RealGardenHeader(viewModel: GardenViewModel) {
             Column(modifier = Modifier.weight(1f)) {
                 Text("我的实体菜园", color = Ink, fontWeight = FontWeight.Black, fontSize = 22.sp)
                 Text(
-                    "拖拽摆放真实菜畦，作物随种植天数长大",
+                    "记录种子/种苗和日期，作物按自身周期逐日长大",
                     color = Muted,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
@@ -443,7 +444,7 @@ private fun RealGardenGrowthSummary(insights: List<PlantingInsight>) {
                         color = Color(0xFF74B84B)
                     ) {}
                     Text(
-                        "${insight.crop.name} · 第 ${insight.rawDay} 天 · ${insight.progressPercent}%",
+                        "${insight.crop.name} · ${insight.batch.method.materialLabel} ${insight.batch.startDate} · ${insight.progressPercent}%",
                         color = Muted,
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 1,
@@ -852,7 +853,11 @@ private fun PlotDetailPanel(plot: Plot, insight: PlantingInsight?, tasks: List<T
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             StatStone("${insight?.progressPercent ?: 0}%", "生长进度", Modifier.weight(1f))
-            StatStone("${insight?.rawDay ?: 0} 天", "已种植", Modifier.weight(1f))
+            StatStone(
+                "${insight?.rawDay ?: 0} 天",
+                insight?.let { "${it.batch.method.materialLabel} · ${it.batch.startDate.drop(5)}" } ?: "种植记录",
+                Modifier.weight(1f)
+            )
             StatStone(insight?.harvestWindow ?: "--", "预计采收", Modifier.weight(1f))
         }
         GlassPanel {
@@ -1057,18 +1062,39 @@ private fun VisualAddPlantingDialog(
     var plot by remember { mutableStateOf(plots.firstOrNull()) }
     var crop by remember { mutableStateOf(CropLibrary.crops.first()) }
     var variety by rememberSaveable { mutableStateOf("") }
-    var method by remember { mutableStateOf(PlantingMethod.SEED) }
+    var method by remember { mutableStateOf<PlantingMethod?>(null) }
     var date by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var quantity by rememberSaveable { mutableStateOf("") }
-    GardenDialog(title = "添加种植", onDismiss = onDismiss, onConfirm = { onSave(plot?.id, crop.id, variety, method, date, quantity) }) {
+    val parsedDate = runCatching { LocalDate.parse(date) }.getOrNull()
+    val dateError = when {
+        parsedDate == null -> "请输入 YYYY-MM-DD 格式的日期"
+        parsedDate.isAfter(LocalDate.now()) -> "种植日期不能晚于今天"
+        else -> null
+    }
+    val canSave = plot != null && method != null && dateError == null
+    val methodOffsetDays = method?.growthOffsetDays(crop) ?: 0
+    val estimatedHarvestStart = parsedDate?.plusDays(
+        (crop.harvestStartDay - methodOffsetDays).coerceAtLeast(0).toLong()
+    )
+
+    GardenDialog(
+        title = "种下新作物",
+        onDismiss = onDismiss,
+        onConfirm = {
+            method?.let { selectedMethod ->
+                onSave(plot?.id, crop.id, variety, selectedMethod, date, quantity)
+            }
+        },
+        confirmEnabled = canSave,
+        confirmLabel = "开始种植"
+    ) {
         if (plots.isEmpty()) {
             Text("还没有地块，请先添加地块", color = MaterialTheme.colorScheme.error)
         } else {
             VisualDropdown("地块", plot ?: plots.first(), plots, { it.name }) { plot = it }
-            VisualDropdown("方式", method, PlantingMethod.values().toList(), { it.label }) { method = it }
-            GardenField(date, { date = it }, "日期 YYYY-MM-DD")
+            Text("选择作物", color = Muted, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(CropLibrary.crops.take(8), key = { it.id }) { option ->
+                items(CropLibrary.crops, key = { it.id }) { option ->
                     val selected = option.id == crop.id
                     Surface(
                         modifier = Modifier
@@ -1096,7 +1122,101 @@ private fun VisualAddPlantingDialog(
                 }
             }
             GardenField(variety, { variety = it }, "品种")
+
+            Text("你种下的是？", color = Ink, fontWeight = FontWeight.Black)
+            Text(
+                "必须选择种子、种苗或插条；它会改变起始长势和预计采收时间。",
+                color = Muted,
+                style = MaterialTheme.typography.bodySmall
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                PlantingMethod.values().forEach { option ->
+                    PlantingMethodChoice(
+                        method = option,
+                        selected = method == option,
+                        onClick = { method = option },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            GardenField(
+                value = date,
+                onValueChange = { date = it },
+                label = "${method?.dateLabel ?: "种植日期"} YYYY-MM-DD"
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    dateError ?: (method?.predictionHint ?: "选择种植方式后开始预测"),
+                    modifier = Modifier.weight(1f),
+                    color = if (dateError == null) Muted else MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                TextButton(onClick = { date = LocalDate.now().toString() }) {
+                    Text("今天")
+                }
+            }
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                color = GardenMist,
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.72f))
+            ) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("生长预测", color = Ink, fontWeight = FontWeight.Black)
+                    Text(
+                        "${crop.name}完整生长周期约 ${crop.harvestStartDay}-${crop.harvestEndDay} 天",
+                        color = Muted,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        if (method == null || estimatedHarvestStart == null) {
+                            "选择种植方式和有效日期后显示预计采收时间"
+                        } else {
+                            "${method?.materialLabel}起始生长 +$methodOffsetDays 天 · 预计 ${estimatedHarvestStart} 起可采收"
+                        },
+                        color = LeafDeep,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
             GardenField(quantity, { quantity = it }, "数量/面积")
+        }
+    }
+}
+
+@Composable
+private fun PlantingMethodChoice(
+    method: PlantingMethod,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = if (selected) Color(0xFFDDEFD2) else Paper,
+        border = BorderStroke(
+            if (selected) 2.dp else 1.dp,
+            if (selected) LeafDeep else Stone
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(method.materialLabel, color = if (selected) LeafDeep else Ink, fontWeight = FontWeight.Black)
+            Text(method.label, color = Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1)
         }
     }
 }
@@ -1155,6 +1275,8 @@ private fun GardenDialog(
     title: String,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
+    confirmEnabled: Boolean = true,
+    confirmLabel: String = "保存",
     content: @Composable ColumnScope.() -> Unit
 ) {
     AlertDialog(
@@ -1172,9 +1294,10 @@ private fun GardenDialog(
         confirmButton = {
             Button(
                 onClick = onConfirm,
+                enabled = confirmEnabled,
                 colors = ButtonDefaults.buttonColors(containerColor = LeafDeep),
                 shape = RoundedCornerShape(18.dp)
-            ) { Text("保存") }
+            ) { Text(confirmLabel) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
         containerColor = Paper

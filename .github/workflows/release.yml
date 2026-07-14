@@ -63,9 +63,18 @@ jobs:
           if gh release view "$TAG_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG_NAME" "$APK#$ASSET_NAME" --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create "$TAG_NAME" "$APK#$ASSET_NAME" \
-              --repo "$GITHUB_REPOSITORY" \
-              --target main \
-              --title "菜园管家 ${TAG_NAME}" \
-              --notes "菜园管家 Android ${TAG_NAME} 正式版。"
+            NOTES_FILE="docs/releases/${TAG_NAME#v}.md"
+            if [[ -f "$NOTES_FILE" ]]; then
+              gh release create "$TAG_NAME" "$APK#$ASSET_NAME" \
+                --repo "$GITHUB_REPOSITORY" \
+                --target main \
+                --title "菜园管家 ${TAG_NAME}" \
+                --notes-file "$NOTES_FILE"
+            else
+              gh release create "$TAG_NAME" "$APK#$ASSET_NAME" \
+                --repo "$GITHUB_REPOSITORY" \
+                --target main \
+                --title "菜园管家 ${TAG_NAME}" \
+                --notes "菜园管家 Android ${TAG_NAME} 正式版。"
+            fi
           fi
