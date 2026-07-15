@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -64,6 +65,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.caicai.garden.data.FarmTile
 import com.caicai.garden.data.FarmTileType
+import com.caicai.garden.domain.CropGroundingStyle
+import com.caicai.garden.domain.CropVisualState
 import com.caicai.garden.domain.PlantingInsight
 import kotlin.math.PI
 import kotlin.math.abs
@@ -89,6 +92,21 @@ private enum class FarmAssetGestureMode {
 
 private val bitmapContentBoundsCache = mutableMapOf<Int, Rect>()
 private val bitmapPrimaryContentBoundsCache = mutableMapOf<Int, Rect>()
+
+private data class CropSoilClod(
+    val xFraction: Float,
+    val yFraction: Float,
+    val radiusFraction: Float,
+    val color: Color
+)
+
+private val cropSoilClods = listOf(
+    CropSoilClod(-0.34f, 0.34f, 0.17f, Color(0xFF6A3519)),
+    CropSoilClod(-0.17f, 0.18f, 0.21f, Color(0xFF955126)),
+    CropSoilClod(0.00f, 0.28f, 0.25f, Color(0xFF7C401E)),
+    CropSoilClod(0.18f, 0.40f, 0.18f, Color(0xFFAA612D)),
+    CropSoilClod(0.35f, 0.22f, 0.15f, Color(0xFF71391B))
+)
 
 @Composable
 fun FarmAssetBoard(
@@ -920,7 +938,8 @@ private fun DrawScope.drawFarmTiles(
             center = center.copy(y = center.y + metrics.tileHeight * 0.24f * projection.scale),
             width = metrics.tileWidth * 1.36f * projection.scale,
             height = metrics.tileHeight * 1.12f * projection.scale,
-            alpha = 0.40f
+            alpha = 0.40f,
+            contentOnly = true
         )
         drawFarmTileContent(
             bitmaps = bitmaps,
@@ -977,8 +996,14 @@ private fun DrawScope.drawRaisedBedCrop(
     val stage = visual.spriteStage.assetName
     val scaledTileWidth = metrics.tileWidth * cellScale
     val scaledTileHeight = metrics.tileHeight * cellScale
-    val soilContactY = center.y + scaledTileHeight * 0.03f
+    val soilSurfaceY = center.y + scaledTileHeight * 0.02f
+    val cropAnchorY = soilSurfaceY + scaledTileHeight * visual.embedDepthTiles
     val cropWidth = scaledTileWidth * visual.canopyWidthTiles
+    val soilContactWidth = (cropWidth * visual.soilContactWidthFactor).coerceIn(
+        scaledTileWidth * 0.075f,
+        scaledTileWidth * 0.34f
+    )
+    val soilLipHeight = scaledTileHeight * visual.groundingStyle.soilLipHeightFactor()
     val windRotation = cropWindRotationDegrees(
         cycle = windCycle,
         row = tile.row,
@@ -986,22 +1011,130 @@ private fun DrawScope.drawRaisedBedCrop(
         stage = stage,
         windFlex = visual.windFlex
     )
-    drawBitmapCentered(
-        bitmap = bitmaps["sprites/effects/soft_shadow_blob.png"],
-        center = center.copy(y = soilContactY + scaledTileHeight * 0.04f),
-        width = cropWidth * visual.shadowWidthFactor,
-        height = scaledTileHeight * 0.18f,
-        alpha = 0.18f
+    drawCropGroundShadow(
+        shadowBitmap = bitmaps["sprites/effects/soft_shadow_blob.png"],
+        centerX = center.x,
+        soilSurfaceY = soilSurfaceY,
+        cropWidth = cropWidth,
+        scaledTileHeight = scaledTileHeight,
+        contactWidth = soilContactWidth,
+        visual = visual
     )
-    drawBitmapBottomAligned(
+    drawBitmapGroundAnchored(
         bitmap = bitmaps["sprites/crops_no_soil/${visual.assetCropName}/$stage.png"],
         centerX = center.x,
-        bottomY = soilContactY,
+        anchorY = cropAnchorY,
+        anchorYFraction = visual.groundAnchorYFraction,
         contentWidth = cropWidth,
         heightScale = visual.heightScale,
         rotationDegrees = tile.rotationDegrees + windRotation,
-        primaryContentOnly = true
+        primaryContentOnly = true,
+        clipBottomY = if (visual.groundingStyle == CropGroundingStyle.SPRAWLING) {
+            null
+        } else {
+            soilSurfaceY + soilLipHeight * 0.30f
+        }
     )
+    drawCropSoilLip(
+        centerX = center.x,
+        soilSurfaceY = soilSurfaceY,
+        contactWidth = soilContactWidth,
+        lipHeight = soilLipHeight,
+        style = visual.groundingStyle
+    )
+}
+
+private fun CropGroundingStyle.shadowWidthMultiplier(): Float = when (this) {
+    CropGroundingStyle.STEM -> 1.00f
+    CropGroundingStyle.ROSETTE -> 0.94f
+    CropGroundingStyle.SPRAWLING -> 1.28f
+    CropGroundingStyle.CLUMP -> 1.02f
+    CropGroundingStyle.BULB -> 0.90f
+    CropGroundingStyle.ROOT -> 0.78f
+}
+
+private fun CropGroundingStyle.shadowHeightFactor(): Float = when (this) {
+    CropGroundingStyle.STEM -> 0.16f
+    CropGroundingStyle.ROSETTE -> 0.19f
+    CropGroundingStyle.SPRAWLING -> 0.23f
+    CropGroundingStyle.CLUMP -> 0.18f
+    CropGroundingStyle.BULB -> 0.16f
+    CropGroundingStyle.ROOT -> 0.14f
+}
+
+private fun CropGroundingStyle.soilLipHeightFactor(): Float = when (this) {
+    CropGroundingStyle.STEM -> 0.110f
+    CropGroundingStyle.ROSETTE -> 0.130f
+    CropGroundingStyle.SPRAWLING -> 0.095f
+    CropGroundingStyle.CLUMP -> 0.120f
+    CropGroundingStyle.BULB -> 0.140f
+    CropGroundingStyle.ROOT -> 0.150f
+}
+
+private fun DrawScope.drawCropGroundShadow(
+    shadowBitmap: Bitmap?,
+    centerX: Float,
+    soilSurfaceY: Float,
+    cropWidth: Float,
+    scaledTileHeight: Float,
+    contactWidth: Float,
+    visual: CropVisualState
+) {
+    val shadowHeight = scaledTileHeight * visual.groundingStyle.shadowHeightFactor()
+    drawBitmapCentered(
+        bitmap = shadowBitmap,
+        center = Offset(centerX, soilSurfaceY + shadowHeight * 0.18f),
+        width = cropWidth * visual.shadowWidthFactor * visual.groundingStyle.shadowWidthMultiplier(),
+        height = shadowHeight,
+        alpha = if (visual.groundingStyle == CropGroundingStyle.SPRAWLING) 0.48f else 0.58f,
+        contentOnly = true
+    )
+
+    val coreWidth = contactWidth * 1.32f
+    val coreHeight = (scaledTileHeight * 0.075f).coerceAtLeast(1.8f)
+    drawOval(
+        color = Color(0xFF29170D).copy(alpha = 0.16f),
+        topLeft = Offset(centerX - coreWidth * 0.48f, soilSurfaceY - coreHeight * 0.36f),
+        size = Size(coreWidth * 0.96f, coreHeight * 0.92f)
+    )
+    drawOval(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF21150D).copy(alpha = 0.32f),
+                Color(0xFF392014).copy(alpha = 0.14f),
+                Color.Transparent
+            ),
+            center = Offset(centerX, soilSurfaceY + coreHeight * 0.20f),
+            radius = coreWidth * 0.56f
+        ),
+        topLeft = Offset(centerX - coreWidth * 0.5f, soilSurfaceY - coreHeight * 0.35f),
+        size = Size(coreWidth, coreHeight)
+    )
+}
+
+private fun DrawScope.drawCropSoilLip(
+    centerX: Float,
+    soilSurfaceY: Float,
+    contactWidth: Float,
+    lipHeight: Float,
+    style: CropGroundingStyle
+) {
+    val halfWidth = contactWidth * 0.5f
+    val isBuriedCrop = style == CropGroundingStyle.ROOT || style == CropGroundingStyle.BULB
+    val clodScale = if (isBuriedCrop) 1.16f else 1f
+    cropSoilClods.forEachIndexed { index, clod ->
+        val radius = (lipHeight * clod.radiusFraction * clodScale).coerceAtLeast(0.75f)
+        val clodWidth = radius * 2f
+        val clodHeight = radius * (1.20f + (index % 2) * 0.16f)
+        drawOval(
+            color = clod.color.copy(alpha = if (isBuriedCrop) 0.94f else 0.84f),
+            topLeft = Offset(
+                centerX + halfWidth * clod.xFraction - clodWidth * 0.5f,
+                soilSurfaceY + lipHeight * clod.yFraction - clodHeight * 0.5f
+            ),
+            size = Size(clodWidth, clodHeight)
+        )
+    }
 }
 
 private fun cropWindRotationDegrees(
@@ -1084,7 +1217,8 @@ private fun DrawScope.drawBitmapCentered(
     width: Float,
     height: Float,
     rotationDegrees: Float = 0f,
-    alpha: Float = 1f
+    alpha: Float = 1f,
+    contentOnly: Boolean = false
 ) {
     if (bitmap == null) return
     val destination = RectF(
@@ -1104,30 +1238,34 @@ private fun DrawScope.drawBitmapCentered(
         if (rotationDegrees != 0f) {
             nativeCanvas.rotate(rotationDegrees, center.x, center.y)
         }
-        nativeCanvas.drawBitmap(bitmap, null, destination, paint)
+        val source = if (contentOnly) bitmap.alphaContentBounds() else null
+        nativeCanvas.drawBitmap(bitmap, source, destination, paint)
         nativeCanvas.restore()
     }
 }
 
-private fun DrawScope.drawBitmapBottomAligned(
+private fun DrawScope.drawBitmapGroundAnchored(
     bitmap: Bitmap?,
     centerX: Float,
-    bottomY: Float,
+    anchorY: Float,
+    anchorYFraction: Float,
     contentWidth: Float,
     heightScale: Float = 1f,
     rotationDegrees: Float = 0f,
     alpha: Float = 1f,
-    primaryContentOnly: Boolean = false
+    primaryContentOnly: Boolean = false,
+    clipBottomY: Float? = null
 ) {
     if (bitmap == null) return
     val source = if (primaryContentOnly) bitmap.alphaPrimaryContentBounds() else bitmap.alphaContentBounds()
     val contentHeight = contentWidth * source.height().toFloat() /
         source.width().coerceAtLeast(1) * heightScale
+    val top = anchorY - contentHeight * anchorYFraction.coerceIn(0f, 1f)
     val destination = RectF(
         centerX - contentWidth * 0.5f,
-        bottomY - contentHeight,
+        top,
         centerX + contentWidth * 0.5f,
-        bottomY
+        top + contentHeight
     )
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         isFilterBitmap = true
@@ -1137,8 +1275,9 @@ private fun DrawScope.drawBitmapBottomAligned(
     drawIntoCanvas { canvas ->
         val nativeCanvas = canvas.nativeCanvas
         nativeCanvas.save()
+        clipBottomY?.let { nativeCanvas.clipRect(0f, 0f, size.width, it) }
         if (rotationDegrees != 0f) {
-            nativeCanvas.rotate(rotationDegrees, centerX, bottomY)
+            nativeCanvas.rotate(rotationDegrees, centerX, anchorY)
         }
         nativeCanvas.drawBitmap(bitmap, source, destination, paint)
         nativeCanvas.restore()

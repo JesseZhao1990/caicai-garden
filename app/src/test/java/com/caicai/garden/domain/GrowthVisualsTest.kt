@@ -59,4 +59,20 @@ class GrowthVisualsTest {
         assertEquals("water_spinach", waterSpinach.assetCropName)
         assertEquals("chive", chive.assetCropName)
     }
+
+    @Test
+    fun cropFormsUseTheirOwnGroundAnchorsAndContactStyles() {
+        val tomato = CropVisualLibrary.stateFor(CropLibrary.byId("tomato"), 90)
+        val cucumber = CropVisualLibrary.stateFor(CropLibrary.byId("cucumber"), 60)
+        val pakchoi = CropVisualLibrary.stateFor(CropLibrary.byId("pakchoi"), 60)
+        val carrot = CropVisualLibrary.stateFor(CropLibrary.byId("carrot"), 100)
+
+        assertEquals(CropGroundingStyle.STEM, tomato.groundingStyle)
+        assertEquals(CropGroundingStyle.SPRAWLING, cucumber.groundingStyle)
+        assertEquals(CropGroundingStyle.ROSETTE, pakchoi.groundingStyle)
+        assertEquals(CropGroundingStyle.ROOT, carrot.groundingStyle)
+        assertTrue(cucumber.groundAnchorYFraction < tomato.groundAnchorYFraction)
+        assertTrue(carrot.groundAnchorYFraction < 0.50f)
+        assertTrue(pakchoi.soilContactWidthFactor > tomato.soilContactWidthFactor)
+    }
 }

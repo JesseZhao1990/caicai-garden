@@ -599,3 +599,28 @@ Debug APK：
 - 发布前 `:app:testDebugUnitTest`、`:app:assembleDebug`、`:app:lintDebug` 全部成功；4 个测试套件共 14 个测试通过。
 
 本次 Release 包含第 19-22 节记录的自然菜地轮廓、连续细颗粒土壤、平面土地方格与泥沟、白菜完整素材以及成熟圆标移除。发布验证完成后，交接文档单独提交并推送到 `main`；tag 仍固定指向发布代码提交。
+
+## 24. 2026-07-15 作物根部锚点与入土感优化
+
+用户在 `v1.3.0` 画面上继续指出作物像插在土地上，部分菜像漂浮。根因不是简单的整体 Y 偏移：旧版统一以透明图最下面的像素作为根部，但匍匐作物的最下方经常是果实或卷须；同时接触阴影素材存在大面积透明留白，实际阴影几乎不可见。
+
+本轮已完成：
+
+- `GrowthVisuals.kt` 新增六种 `CropGroundingStyle`：`STEM / ROSETTE / SPRAWLING / CLUMP / BULB / ROOT`。
+- 15 种作物都配置独立的接触宽度、入土深度和四阶段根部锚点，不共用一个全局落点。
+- `FarmAssetBoard` 改为根据根部锚点定位和旋转作物；直立茎秆、莲座叶菜、匍匐藤蔓、丛生菜、鳞茎和地下根菜分别使用不同的阴影宽高与土面裁切策略。
+- 胡萝卜、萝卜收获图会以根冠对齐土面并隐藏地下部分；黄瓜、西葫芦等保留土面下方的果实/卷须像素，不做错误裁切。
+- 接触阴影按素材有效内容范围绘制，补充浅种植穴；根部前景以不连续的小土块遮住边缘，不再出现连续横向底座。
+- 新增单元测试验证关键株型使用不同锚点与入土策略；当前共 15 个测试。
+- Debug APK 已保留数据覆盖安装到 `emulator-5554`，两级放大查看态和移动态均已验收，模拟器当前停留在两级放大的查看模式。
+- 验收截图：`docs/validation/2026-07-15/crop-grounding.jpg`、`docs/validation/2026-07-15/crop-grounding-edit.jpg`。
+
+本轮修改：
+
+- `app/src/main/java/com/caicai/garden/domain/GrowthVisuals.kt`
+- `app/src/main/java/com/caicai/garden/ui/FarmAssetBoard.kt`
+- `app/src/test/java/com/caicai/garden/domain/GrowthVisualsTest.kt`
+- `docs/validation/2026-07-15/`
+- `docs/NEXT_SESSION_HANDOFF.md`
+
+以上改动进入 `v1.4.0` 发布提交，正式发布结果见后续记录。
