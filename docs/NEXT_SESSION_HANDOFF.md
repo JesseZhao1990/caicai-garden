@@ -1,6 +1,6 @@
 # 菜园管家项目交接文档
 
-更新时间：2026-07-14
+更新时间：2026-07-15
 
 工作目录：`/Users/bytedance/Documents/caicai`
 
@@ -11,7 +11,7 @@
 当前最重要的事实：
 
 - 项目已经创建 GitHub 仓库、提交并推送，不要重复初始化仓库。
-- `v1.1.0` 已通过 GitHub Releases 发布，App 内自动/手动升级能力已经实现。
+- `v1.3.0` 已通过 GitHub Releases 正式发布，App 内自动/手动升级能力已经实现。
 - SceneView/Filament 依赖、GLB 文件和 `FarmScene3DBoard.kt` 已存在，但当前菜园页真正启用的仍是 Compose Canvas 的 `FarmAssetBoard` 2.5D 位图方案。
 - 用户最关心的不是游戏系统，而是一个美观、可编辑、能映射真实实体菜园、作物能随时间成长的菜园视图。
 - 不要继续用小修小补掩盖渲染路线问题。若继续视觉升级，应先在设备上验证当前画面，再决定替换真实 3D 资产和接入 3D 交互。
@@ -46,24 +46,24 @@ git log --oneline --decorate -5
 
 ## 3. 当前 Git 与远端状态
 
-截至 2026-07-14 的实时核对结果：
+截至 2026-07-15 的实时核对结果：
 
 - 当前分支：`main`
-- 当前 `main` 上有尚未提交的本轮种植方式、逐菜生长视觉、测试和验收文档改动；以文末最新进展和实时 `git status` 为准，不要覆盖。
-- 已提交代码与远端一致：`main...origin/main`
+- `v1.3.0` 发布代码已提交并推送；最新发布验证记录也已推送到 `main`，继续前仍应以实时 `git status` 为准。
+- 已提交代码与远端一致：`main...origin/main`。
 - 远端：`git@github.com:JesseZhao1990/caicai-garden.git`
 - 仓库：[JesseZhao1990/caicai-garden](https://github.com/JesseZhao1990/caicai-garden)
 - 可见性：`PUBLIC`
-- 当前提交：`6cb1b32 Document release upgrade path`
-- 版本标签：`v1.1.0` 指向提交 `611d07f`
+- `v1.3.0` 发布提交：`4aec9a1 Release garden terrain and crop visual fixes`
+- 版本标签：`v1.3.0` 指向提交 `4aec9a172a808cbdb5add11eaa8e896f6d85e5dd`
 
 最近提交：
 
 ```text
-6cb1b32 Document release upgrade path
-f3b8e6b Update GitHub Actions runtimes
-611d07f (tag: v1.1.0) Add GitHub Releases app updates
-8ce30ac Initial Android garden app
+4aec9a1 (tag: v1.3.0) Release garden terrain and crop visual fixes
+38214d6 Document v1.2.0 release verification
+20673e2 Fix release notes file lookup
+13db698 (tag: v1.2.0) Release garden growth and layout improvements
 ```
 
 GitHub CLI 位于：
@@ -84,8 +84,8 @@ ssh -T git@github.com
 App 当前版本：
 
 ```text
-versionCode = 2
-versionName = 1.1.0
+versionCode = 4
+versionName = 1.3.0
 applicationId = com.caicai.garden
 minSdk = 26
 targetSdk = 35
@@ -93,10 +93,10 @@ targetSdk = 35
 
 正式 Release：
 
-- 地址：[菜园管家 v1.1.0](https://github.com/JesseZhao1990/caicai-garden/releases/tag/v1.1.0)
+- 地址：[菜园管家 v1.3.0](https://github.com/JesseZhao1990/caicai-garden/releases/tag/v1.3.0)
 - APK：`app-release.apk`
-- 大小：`67,519,259` bytes
-- SHA-256：`230488dcea149cfba15a3fc82774baefa454e335dba159a2def117b0a0e960f1`
+- 大小：`71,302,263` bytes
+- SHA-256：`ce5e08b4d23da3bcc0767596d08762041cd75af46a05df568077f6c60e8a595a`
 - 状态：非草稿、非预发布
 
 App 内升级能力已经完成：
@@ -116,18 +116,18 @@ App 内升级能力已经完成：
 - `app/src/main/AndroidManifest.xml`
 - `app/src/main/res/xml/update_file_paths.xml`
 - `.github/workflows/release.yml`
-- `docs/releases/v1.1.0.md`
+- `docs/releases/v1.3.0.md`
 
 发布下一个版本：
 
 1. 提升 `app/build.gradle.kts` 中的 `versionCode` 和 `versionName`。
 2. 提交并推送代码。
-3. 创建与版本名一致的 tag，例如 `v1.2.0`。
+3. 创建与版本名一致的 tag，例如 `v1.4.0`。
 4. 推送 tag 后，`Publish Android release` GitHub Actions 会构建固定签名 APK 并创建 Release。
 
 ```bash
-git tag v1.2.0
-git push origin v1.2.0
+git tag -a v1.4.0 -m "菜园管家 v1.4.0"
+git push origin v1.4.0
 ```
 
 注意：设备若安装的是 Debug 签名版本，第一次切换到正式签名 APK 时需要先卸载 Debug 包。之后使用相同 Release 签名即可覆盖升级。
@@ -581,3 +581,21 @@ Debug APK：
 - `docs/NEXT_SESSION_HANDOFF.md`
 
 以上改动进入 `v1.3.0` 发布提交，正式发布结果见后续记录。
+
+## 23. 2026-07-15 v1.3.0 正式发布
+
+本节是当前最新发布状态，覆盖第 18 节的 `v1.2.0` 发布信息。
+
+- App 版本：`versionCode = 4`、`versionName = 1.3.0`、包名 `com.caicai.garden`。
+- 发布代码提交：`4aec9a172a808cbdb5add11eaa8e896f6d85e5dd`，提交说明为 `Release garden terrain and crop visual fixes`。
+- 正式 annotated tag：`v1.3.0`，指向上述发布提交。
+- Release：[菜园管家 v1.3.0](https://github.com/JesseZhao1990/caicai-garden/releases/tag/v1.3.0)，状态为非草稿、非预发布，并已成为 latest release。
+- GitHub Actions：[Publish Android release run 29393453543](https://github.com/JesseZhao1990/caicai-garden/actions/runs/29393453543)，`build-and-publish` 全部步骤成功。
+- 正式 APK：`app-release.apk`，大小 `71,302,263` bytes。
+- GitHub asset digest 与独立下载后计算的 SHA-256 均为 `ce5e08b4d23da3bcc0767596d08762041cd75af46a05df568077f6c60e8a595a`。
+- APK 元数据实测为 `com.caicai.garden`、`1.3.0 (4)`。
+- APK 使用 v2 签名；证书 SHA-256 为 `5ea7bcef03b70be6ce88049a4e0dc7f0127ec5fddb20d53022e41129687c07a1`，RSA 3072-bit，与之前正式版本一致。
+- 公共 latest-release API 已返回 `v1.3.0`、`app-release.apk` 和相同 digest，App 内升级检查可以直接发现该版本。
+- 发布前 `:app:testDebugUnitTest`、`:app:assembleDebug`、`:app:lintDebug` 全部成功；4 个测试套件共 14 个测试通过。
+
+本次 Release 包含第 19-22 节记录的自然菜地轮廓、连续细颗粒土壤、平面土地方格与泥沟、白菜完整素材以及成熟圆标移除。发布验证完成后，交接文档单独提交并推送到 `main`；tag 仍固定指向发布代码提交。
