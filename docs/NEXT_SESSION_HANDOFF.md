@@ -487,3 +487,97 @@ Debug APK：
 - 发布说明已补充为完整的 v1.2.0 功能清单。工作流 notes-file 路径修复提交为 `20673e2`，后续版本会自动读取 `docs/releases/vX.Y.Z.md`。
 
 发布前验证包括 14 个单元测试、Debug/Release 构建、Android Lint、YAML 解析、APK 元数据、APK 签名、Release digest 和线上 Release 状态，全部通过。
+
+## 19. 2026-07-15 菜地与背景自然融合
+
+用户指出 8 x 8 菜地像一整块悬浮草皮，与周围花园背景割裂。代码与素材核对后确认，原实现会为 64 个格子常驻绘制带深色土壤侧壁的 `grass_tile.png`，即使格子没有作物也会组成完整的厚草块边界。
+
+本轮已完成：
+
+- 查看模式不再绘制任何空格草块，空白区域直接透出连续的花园草地背景，彻底移除整块草皮的外轮廓和厚侧壁。
+- 根据用户后续反馈补回“整体菜地轮廓”：沿 8 x 8 外围格子的透视顶点生成连续边界，使用低透明度草绿色区域、柔和土色外缘和浅色草缘细线表达范围；不恢复任何单格立体草块。
+- 使用内置图片生成模式制作 `flat_soil_patch.png`：平铺的等距土壤、紧凑草缘、透明背景，不含木框、容器、厚侧壁或投影。
+- 只有 `RAISED_BED` 格子绘制薄土层；土壤继续使用既有远小近大的 `FarmCellProjection`，与作物保持同一透视尺度。
+- 土壤素材按有效内容边界校准为 `1.16x`，并以 `0.96` 透明度轻微吸收背景草色；作物根部接触点从格高 `0.08` 调整为 `0.03`，避免悬浮。
+- 8 x 8 菱形格线改为仅在移动、清空、种植或拖拽期间显示，查看模式完全隐藏；辅助线为低透明度绿色描边，不再依赖立体草块表达可编辑区域。
+- 保留此前的景深缩放、从远到近遮挡顺序、透视命中、拖拽落点框和占用格交换行为。
+- 已保留用户数据覆盖安装到 `emulator-5554`，默认查看和两级放大视图均实测；当前模拟器停留在菜园查看模式，可直接体验。
+- 验证截图：`docs/validation/2026-07-15/natural-ground-blend.jpg`、`docs/validation/2026-07-15/natural-ground-edit-grid.jpg`、`docs/validation/2026-07-15/natural-ground-boundary.jpg`。
+- `./gradlew :app:testDebugUnitTest :app:assembleDebug --no-daemon --console=plain` 与 `./gradlew :app:lintDebug --no-daemon --console=plain` 均为 `BUILD SUCCESSFUL`；4 个测试套件共 14 个测试，0 failure、0 error。
+
+本轮新增或修改：
+
+- `app/src/main/assets/farm_v2/sprites/terrain/flat_soil_patch.png`
+- `app/src/main/java/com/caicai/garden/ui/FarmAssetBoard.kt`
+- `docs/validation/2026-07-15/`
+- `docs/NEXT_SESSION_HANDOFF.md`
+
+当前改动尚未提交或发布。继续前先查看实时 `git status`，不要覆盖这些文件。
+
+## 20. 2026-07-15 菜地内部改为整片土地
+
+本节是当前最新视觉状态，覆盖第 19 节中“背景草地延伸到菜地内部、每个种植格单独绘制薄土层”的中间方案。
+
+用户明确要求菜地范围内不要草坪，只保留土地。已完成：
+
+- 8 x 8 透视轮廓内部现在是一整片连续耕作土壤，外围继续显示花园草坪，菜地范围一眼可见。
+- 使用内置 imagegen 模式生成 `continuous_soil_texture.png`：俯视、均匀光照、暖棕色耕作土，无草、植物、边框、透视块、阴影和焦点元素。
+- 土壤纹理只绘制一次，并通过 `clipPath` 裁进既有透视外围路径；不按 64 个格子重复拼块。
+- 移除运行时对 `flat_soil_patch.png` 的引用和素材文件；普通作物与拖拽作物都不再携带独立方形土块，直接落在连续土地上。
+- 查看模式隐藏内部网格；移动、清空、种植和拖拽时叠加深浅双层定位线，在棕色土壤上仍清晰可见。
+- 保留远小近大投影、透视命中、从远到近遮挡、作物阶段尺寸曲线和拖拽交换逻辑。
+- 已保留数据覆盖安装到 `emulator-5554`，默认视图、两级放大和移动模式均完成设备验收；模拟器当前停留在两级放大的查看模式。
+- 最终截图：`docs/validation/2026-07-15/continuous-soil-garden.jpg`、`docs/validation/2026-07-15/continuous-soil-edit-grid.jpg`。
+- `./gradlew :app:testDebugUnitTest :app:assembleDebug --no-daemon --console=plain` 与 `./gradlew :app:lintDebug --no-daemon --console=plain` 均为 `BUILD SUCCESSFUL`；4 个测试套件共 14 个测试，0 failure、0 error。
+
+当前新增或修改：
+
+- `app/src/main/assets/farm_v2/sprites/terrain/continuous_soil_texture.png`
+- `app/src/main/java/com/caicai/garden/ui/FarmAssetBoard.kt`
+- `docs/validation/2026-07-15/`
+- `docs/NEXT_SESSION_HANDOFF.md`
+
+当前改动尚未提交或发布。
+
+## 21. 2026-07-15 土壤颗粒比例调整
+
+用户指出连续土壤版本的泥土颗粒偏大，与作物和背景比例不协调。
+
+本轮已完成：
+
+- 保留 `continuous_soil_texture.png` 的颜色和材质，不重新生成或改变菜地结构。
+- 将原先“单张纹理裁切铺满整个 8 x 8 菜地”改为 `BitmapShader` 连续重复采样。
+- 单次纹理显示宽度设为约 `4.2` 个格子，颗粒视觉尺寸缩小到上一版约 `52%–55%`。
+- Shader 使用双向 `REPEAT` 并继续由整体透视路径裁切；默认视图和两级放大视图均未发现明显接缝。
+- 菜地仍是一整片土地，不恢复草坪、单格土块或常驻网格；编辑态定位线逻辑不变。
+- 已覆盖安装到 `emulator-5554`，当前停留在两级放大的查看模式。
+- 验收截图：`docs/validation/2026-07-15/fine-soil-texture.jpg`。
+- `./gradlew :app:testDebugUnitTest :app:assembleDebug --no-daemon --console=plain` 与 `./gradlew :app:lintDebug --no-daemon --console=plain` 均为 `BUILD SUCCESSFUL`；4 个测试套件共 14 个测试，0 failure、0 error。
+
+本轮没有新增图片素材，只修改 `FarmAssetBoard.kt` 的纹理采样比例和绘制方式。当前改动尚未提交或发布。
+
+## 22. 2026-07-15 平面土地方格、泥沟与白菜素材修复
+
+本节是当前最新视觉状态，覆盖第 20、21 节中“查看态不显示单格边界”的中间方案。
+
+用户最终明确希望保留方格，但方格之间的间隙必须是泥土小沟，不能是草，也不能恢复立体草块。本轮已完成：
+
+- 连续土壤仍作为整个 8 x 8 菜地的底层，并额外压暗为泥沟底色；外围继续保留花园草坪和清晰的菜地轮廓。
+- 每个格子常驻绘制一个内收的平面等距土地方格，半宽/半高比例为 `0.43`，格子之间自然露出窄而连续的深色泥沟。
+- 单格只有轻微的土色明暗边，不绘制厚侧壁、草皮、木框或悬浮阴影；查看态边缘较柔和，移动/编辑态略微增强，定位仍清楚。
+- 土壤纹理单次重复宽度由约 `4.2` 格调整为 `3.0` 格，颗粒再次缩小；方格与底层泥沟共用同一纹理，因此不会形成草色拼缝。
+- 原 `bok_choy/harvest.png` 顶部存在硬裁切，确实会导致白菜叶片显示不全；已使用内置 imagegen 模式生成完整的单株成熟白菜，并处理为透明背景的 512 x 512 PNG，替换收获期素材。
+- 右上角绿色圆圈不是白菜图片内容，而是代码对所有收获期作物叠加的 `mature_ready_badge.png`；现已停止预加载和绘制该徽标，成熟状态仍保留在文字详情中。
+- 已保留用户数据覆盖安装到 `emulator-5554`；查看态、移动态和两级放大画面均已验证。模拟器当前停留在两级放大的查看模式，可直接体验。
+- 验收截图：`docs/validation/2026-07-15/mud-furrow-grid.jpg`、`docs/validation/2026-07-15/mud-furrow-edit-grid.jpg`。
+- `./gradlew :app:testDebugUnitTest :app:assembleDebug --no-daemon --console=plain` 与 `./gradlew :app:lintDebug --no-daemon --console=plain` 均为 `BUILD SUCCESSFUL`；4 个测试套件共 14 个测试，0 failure、0 error。
+
+本轮新增或修改：
+
+- `app/src/main/assets/farm_v2/sprites/crops_no_soil/bok_choy/harvest.png`
+- `app/src/main/assets/farm_v2/sprites/terrain/continuous_soil_texture.png`
+- `app/src/main/java/com/caicai/garden/ui/FarmAssetBoard.kt`
+- `docs/validation/2026-07-15/`
+- `docs/NEXT_SESSION_HANDOFF.md`
+
+以上改动进入 `v1.3.0` 发布提交，正式发布结果见后续记录。
