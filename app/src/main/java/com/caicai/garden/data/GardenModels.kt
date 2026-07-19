@@ -302,11 +302,33 @@ data class GardenDataState(
 )
 
 fun GardenDataState.farmLayoutFor(plotId: String?): FarmLayout {
-    return plotId?.let(farmLayouts::get) ?: FarmLayout()
+    val layout = plotId?.let(farmLayouts::get) ?: FarmLayout()
+    return layout.copy(tiles = layout.tiles.filterNot { it.type == FarmTileType.SIGN })
 }
 
 fun GardenDataState.withFarmLayout(plotId: String, layout: FarmLayout): GardenDataState {
-    return copy(farmLayouts = farmLayouts + (plotId to layout))
+    return copy(
+        farmLayouts = farmLayouts + (
+            plotId to layout.copy(
+                tiles = layout.tiles.filterNot { it.type == FarmTileType.SIGN }
+            )
+        )
+    )
+}
+
+fun GardenDataState.withoutPlot(plotId: String): GardenDataState {
+    if (plots.none { it.id == plotId }) return this
+    return copy(
+        plots = plots.filterNot { it.id == plotId },
+        batches = batches.map { batch ->
+            if (batch.plotId == plotId && batch.status != BatchStatus.FINISHED) {
+                batch.copy(status = BatchStatus.FINISHED)
+            } else {
+                batch
+            }
+        },
+        farmLayouts = farmLayouts - plotId
+    )
 }
 
 data class WeatherDay(

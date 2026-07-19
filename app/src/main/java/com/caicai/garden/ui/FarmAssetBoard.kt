@@ -45,6 +45,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.TransformOrigin
@@ -115,7 +116,9 @@ fun FarmAssetBoard(
     tilesByCell: Map<Pair<Int, Int>, FarmTile>,
     insightsByBatch: Map<String, PlantingInsight>,
     interactionKey: String?,
-    boardHeight: Dp,
+    modifier: Modifier = Modifier,
+    boardHeight: Dp? = null,
+    edgeToEdge: Boolean = false,
     selectedCell: Pair<Int, Int>?,
     selectedBatchId: String?,
     selectedLabel: String?,
@@ -140,11 +143,17 @@ fun FarmAssetBoard(
     }
     val bitmaps = rememberFarmBitmaps(assetPaths)
 
-    BoxWithConstraints(
-        modifier = Modifier
+    val sizeModifier = if (boardHeight == null) {
+        modifier.fillMaxSize()
+    } else {
+        modifier
             .fillMaxWidth()
             .height(boardHeight)
-            .clip(MaterialTheme.shapes.medium)
+    }
+
+    BoxWithConstraints(
+        modifier = sizeModifier
+            .clip(if (edgeToEdge) RectangleShape else MaterialTheme.shapes.medium)
             .background(
                 Brush.verticalGradient(
                     listOf(Color(0xFFEAF8C9), Color(0xFF9BDA63), Color(0xFF62B941))
@@ -405,7 +414,7 @@ fun FarmAssetBoard(
 
         GardenMapZoomRail(
             modifier = Modifier
-                .align(Alignment.TopEnd)
+                .align(Alignment.CenterEnd)
                 .padding(10.dp)
                 .zIndex(3f),
             onZoomIn = { zoomViewport(viewportScale * 1.25f) },
@@ -668,7 +677,6 @@ private fun buildFarmAssetPaths(
         add("sprites/terrain/watered_soil_tile.png")
         add("sprites/structures/greenhouse.png")
         add("sprites/structures/tool_shed.png")
-        add("sprites/structures/blank_label_stake.png")
         add("sprites/structures/irrigation_sprinkler.png")
         add("sprites/environment/pink_flower_bush.png")
         add("sprites/environment/yellow_flower_bush.png")
@@ -693,7 +701,7 @@ private fun buildFarmAssetPaths(
 
                 FarmTileType.GREENHOUSE -> add("sprites/structures/greenhouse.png")
                 FarmTileType.TOOL_SHED -> add("sprites/structures/tool_shed.png")
-                FarmTileType.SIGN -> add("sprites/structures/blank_label_stake.png")
+                FarmTileType.SIGN -> Unit
                 FarmTileType.IRRIGATION -> add("sprites/structures/irrigation_sprinkler.png")
                 FarmTileType.PATH -> add("sprites/terrain/stone_path_tile.png")
                 FarmTileType.FENCE -> add("sprites/structures/wood_fence_straight.png")
@@ -1073,7 +1081,7 @@ private fun DrawScope.drawFarmTileContent(
         )
         FarmTileType.GREENHOUSE -> Unit
         FarmTileType.TOOL_SHED -> Unit
-        FarmTileType.SIGN -> drawStructure(bitmaps, metrics, center, cellScale, "sprites/structures/blank_label_stake.png", tile.rotationDegrees, 1.18f)
+        FarmTileType.SIGN -> Unit
         FarmTileType.IRRIGATION -> drawStructure(bitmaps, metrics, center, cellScale, "sprites/structures/irrigation_sprinkler.png", tile.rotationDegrees, 1.08f)
         FarmTileType.PATH -> drawStructure(bitmaps, metrics, center, cellScale, "sprites/terrain/stone_path_tile.png", tile.rotationDegrees, 1.32f)
         FarmTileType.FENCE -> drawStructure(bitmaps, metrics, center, cellScale, "sprites/structures/wood_fence_straight.png", tile.rotationDegrees, 1.30f)

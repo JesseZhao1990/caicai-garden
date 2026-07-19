@@ -29,6 +29,7 @@ import com.caicai.garden.data.placeBatchAtCell
 import com.caicai.garden.data.placeBatchInFirstEmptyCell
 import com.caicai.garden.data.removeBatch
 import com.caicai.garden.data.withFarmLayout
+import com.caicai.garden.data.withoutPlot
 import com.caicai.garden.domain.GardenAdvisor
 import com.caicai.garden.domain.PlantingInsight
 import kotlinx.coroutines.launch
@@ -122,6 +123,16 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
             )
         )
         message = "已添加地块"
+    }
+
+    fun deletePlot(plotId: String) {
+        val plot = dataState.plots.firstOrNull { it.id == plotId }
+        if (plot == null) {
+            message = "未找到这个地块"
+            return
+        }
+        persist(dataState.withoutPlot(plotId))
+        message = "已删除${plot.name}，历史记录仍保留"
     }
 
     fun addBatch(

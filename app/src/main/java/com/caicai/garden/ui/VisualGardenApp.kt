@@ -75,6 +75,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.caicai.garden.R
 import com.caicai.garden.data.CropLibrary
 import com.caicai.garden.data.CropProfile
@@ -165,7 +166,10 @@ fun VisualGardenApp(viewModel: GardenViewModel) {
         containerColor = WarmBackground,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            GardenBottomNav(selectedTab = selectedTab, onSelectedTabChange = { selectedTab = it })
+            GardenBottomNav(
+                selectedTab = selectedTab,
+                onSelectedTabChange = { selectedTab = it }
+            )
         }
     ) { padding ->
         Box(
@@ -178,7 +182,13 @@ fun VisualGardenApp(viewModel: GardenViewModel) {
                         radius = 520f
                     )
                 )
-                .padding(padding)
+                .then(
+                    if (selectedTab == VisualTab.GARDEN) {
+                        Modifier.padding(top = padding.calculateTopPadding())
+                    } else {
+                        Modifier.padding(padding)
+                    }
+                )
         ) {
             when (selectedTab) {
                 VisualTab.TODAY -> VisualTodayScreen(
@@ -219,6 +229,7 @@ fun VisualGardenApp(viewModel: GardenViewModel) {
                     onStartUpdate = startUpdate
                 )
             }
+
         }
     }
 
@@ -288,9 +299,13 @@ fun VisualGardenApp(viewModel: GardenViewModel) {
 }
 
 @Composable
-private fun GardenBottomNav(selectedTab: VisualTab, onSelectedTabChange: (VisualTab) -> Unit) {
+private fun GardenBottomNav(
+    selectedTab: VisualTab,
+    onSelectedTabChange: (VisualTab) -> Unit,
+    modifier: Modifier = Modifier
+) {
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 18.dp, vertical = 12.dp),
         shape = RoundedCornerShape(24.dp),
@@ -523,28 +538,69 @@ private fun VisualGardenScreen(
 ) {
     val plots = viewModel.dataState.plots
     val selectedPlot = plots.firstOrNull { it.id == selectedPlotId } ?: plots.firstOrNull()
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 112.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        item {
-            RealGardenHeader(
-                plots = plots,
-                selectedPlotId = selectedPlot?.id,
-                insights = viewModel.insights,
-                tasks = viewModel.todayTasks,
-                onSelectedPlotChange = onSelectedPlotChange,
-                onAddPlot = onAddPlot
-            )
-        }
-        item {
-            FarmDesignerSection(
-                viewModel = viewModel,
-                selectedPlotId = selectedPlot?.id,
-                onSelectedPlotChange = onSelectedPlotChange
-            )
-        }
+    var pendingDeletePlot by remember { mutableStateOf<Plot?>(null) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        FarmDesignerSection(
+            viewModel = viewModel,
+            selectedPlotId = selectedPlot?.id,
+            onSelectedPlotChange = onSelectedPlotChange,
+            modifier = Modifier.fillMaxSize(),
+            immersive = true,
+            bottomContentPadding = 84.dp
+        )
+        RealGardenHeader(
+            plots = plots,
+            selectedPlotId = selectedPlot?.id,
+            insights = viewModel.insights,
+            tasks = viewModel.todayTasks,
+            onSelectedPlotChange = onSelectedPlotChange,
+            onAddPlot = onAddPlot,
+            onDeletePlot = { pendingDeletePlot = it },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(horizontal = 12.dp, vertical = 10.dp)
+                .zIndex(10f)
+        )
+    }
+
+    pendingDeletePlot?.let { plot ->
+        val activeCount = viewModel.insights.count { it.plot?.id == plot.id }
+        AlertDialog(
+            onDismissRequest = { pendingDeletePlot = null },
+            shape = RoundedCornerShape(26.dp),
+            containerColor = Paper,
+            title = {
+                Text("删除${plot.name}？", color = Ink, fontWeight = FontWeight.Black)
+            },
+            text = {
+                Text(
+                    if (activeCount > 0) {
+                        "该地块还有 $activeCount 种作物。删除后地图布局会移除，相关作物停止养护提醒；菜园足迹仍会保留。"
+                    } else {
+                        "删除后该地块及地图布局会移除，菜园足迹仍会保留。"
+                    },
+                    color = Muted
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deletePlot(plot.id)
+                        pendingDeletePlot = null
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB34A3C))
+                ) {
+                    Text("确认删除", fontWeight = FontWeight.Black)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeletePlot = null }) {
+                    Text("取消", color = Muted, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
     }
 }
 
@@ -555,7 +611,9 @@ private fun RealGardenHeader(
     insights: List<PlantingInsight>,
     tasks: List<TaskReminder>,
     onSelectedPlotChange: (String) -> Unit,
-    onAddPlot: () -> Unit
+    onAddPlot: () -> Unit,
+    onDeletePlot: (Plot) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val selectedPlot = plots.firstOrNull { it.id == selectedPlotId } ?: plots.firstOrNull()
@@ -563,65 +621,120 @@ private fun RealGardenHeader(
     val activeCount = insights.count { it.plot?.id == selectedPlot?.id }
     val taskCount = tasks.count { it.plotId == selectedPlot?.id }
 
+    if (!expanded) {
+        Surface(
+            modifier = modifier
+                .width(174.dp)
+                .height(52.dp)
+                .clickable { expanded = true },
+            shape = RoundedCornerShape(19.dp),
+            color = Color(0xFFF0F7E8).copy(alpha = 0.97f),
+            shadowElevation = 10.dp,
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.82f))
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    modifier = Modifier.size(34.dp),
+                    shape = CircleShape,
+                    color = LeafDeep
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("园", color = Color.White, fontWeight = FontWeight.Black, fontSize = 13.sp)
+                    }
+                }
+                Text(
+                    selectedPlot?.name ?: "添加地块",
+                    modifier = Modifier.weight(1f),
+                    color = Ink,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    if (selectedIndex >= 0) "${selectedIndex + 1}/${plots.size}" else "0/0",
+                    color = LeafDeep,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 11.sp
+                )
+                Text("⌄", color = LeafDeep, fontWeight = FontWeight.Black, fontSize = 13.sp)
+            }
+        }
+        return
+    }
+
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        color = Color(0xFFEAF6DE),
-        shadowElevation = 5.dp,
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.72f))
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        color = Color(0xFFF0F7E8).copy(alpha = 0.99f),
+        shadowElevation = 12.dp,
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.80f))
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.padding(horizontal = 11.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(50.dp)
                     .clickable { expanded = !expanded },
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                Surface(
+                    modifier = Modifier.size(38.dp),
+                    shape = CircleShape,
+                    color = LeafDeep
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("园", color = Color.White, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                    }
+                }
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("我的实体菜园", color = Ink, fontWeight = FontWeight.Black, fontSize = 22.sp)
+                    Text(
+                        selectedPlot?.name ?: "还没有地块",
+                        color = Ink,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 18.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                     Text(
                         selectedPlot?.let {
-                            "${it.name} · ${it.growingStyle.label} · ${it.soilType} · ${it.sizeLabel}"
-                        } ?: "还没有地块，请先添加地块",
+                            "${it.growingStyle.label} · ${it.soilType} · $activeCount 种植 · $taskCount 待办"
+                        } ?: "展开地块管理后添加第一块菜地",
                         color = Muted,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
                 Surface(
                     shape = RoundedCornerShape(14.dp),
-                    color = Paper.copy(alpha = 0.76f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.68f))
+                    color = Paper.copy(alpha = 0.84f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.76f))
                 ) {
                     Row(
-                        modifier = Modifier.padding(start = 10.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(7.dp)
                     ) {
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                if (selectedIndex >= 0) "${selectedIndex + 1} / ${plots.size}" else "0 / 0",
-                                color = LeafDeep,
-                                fontWeight = FontWeight.Black,
-                                fontSize = 14.sp
-                            )
-                            Text(
-                                if (selectedPlot != null) "$activeCount 种植 · $taskCount 待办" else "暂无地块",
-                                color = Muted,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        Text(
+                            if (selectedIndex >= 0) "${selectedIndex + 1}/${plots.size}" else "0/0",
+                            color = LeafDeep,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 13.sp
+                        )
                         Text(
                             if (expanded) "⌃" else "⌄",
                             color = LeafDeep,
                             fontWeight = FontWeight.Black,
-                            fontSize = 17.sp
+                            fontSize = 15.sp
                         )
                     }
                 }
@@ -633,39 +746,63 @@ private fun RealGardenHeader(
                 exit = fadeOut() + shrinkVertically()
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(Stone.copy(alpha = 0.45f))
+                    )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            "地块管理",
-                            color = Ink,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 13.sp
-                        )
+                        Column {
+                            Text(
+                                "地块管理",
+                                color = Ink,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                "切换、添加或删除地块",
+                                color = Muted,
+                                fontSize = 11.sp
+                            )
+                        }
                         Surface(
                             modifier = Modifier.clickable(onClick = onAddPlot),
-                            shape = RoundedCornerShape(13.dp),
-                            color = Paper.copy(alpha = 0.82f),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.72f))
+                            shape = RoundedCornerShape(14.dp),
+                            color = LeafDeep,
+                            shadowElevation = 3.dp
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(5.dp)
                             ) {
-                                Text("+", color = LeafDeep, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                                Text("添加地块", color = LeafDeep, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                                Text("+", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                                Text("添加地块", color = Color.White, fontWeight = FontWeight.Black, fontSize = 12.sp)
                             }
                         }
                     }
                     if (plots.isEmpty()) {
-                        Text(
-                            "还没有地块，添加后即可开始规划菜园。",
-                            color = Muted,
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(onClick = onAddPlot),
+                            shape = RoundedCornerShape(16.dp),
+                            color = Paper.copy(alpha = 0.78f),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.72f))
+                        ) {
+                            Text(
+                                "还没有地块，点击这里添加第一块菜地",
+                                modifier = Modifier.padding(14.dp),
+                                color = LeafDeep,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
                     } else {
                         GardenPlotSwitcher(
                             plots = plots,
@@ -674,7 +811,8 @@ private fun RealGardenHeader(
                             onSelectedPlotChange = { plotId ->
                                 onSelectedPlotChange(plotId)
                                 expanded = false
-                            }
+                            },
+                            onDeletePlot = onDeletePlot
                         )
                     }
                 }
@@ -688,58 +826,89 @@ private fun GardenPlotSwitcher(
     plots: List<Plot>,
     selectedPlotId: String?,
     insights: List<PlantingInsight>,
-    onSelectedPlotChange: (String) -> Unit
+    onSelectedPlotChange: (String) -> Unit,
+    onDeletePlot: (Plot) -> Unit
 ) {
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val gap = 7.dp
-        val optionWidth = if (plots.size <= 3) {
-            (maxWidth - gap * (plots.size - 1)) / plots.size.coerceAtLeast(1)
-        } else {
-            116.dp
-        }
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(gap)
-        ) {
-            items(plots, key = { it.id }) { plot ->
-                val selected = plot.id == selectedPlotId
-                val plotActiveCount = insights.count { it.plot?.id == plot.id }
-                Surface(
-                    modifier = Modifier
-                        .width(optionWidth)
-                        .height(54.dp)
-                        .clickable { onSelectedPlotChange(plot.id) },
-                    shape = RoundedCornerShape(16.dp),
-                    color = if (selected) LeafDeep else Paper.copy(alpha = 0.76f),
-                    shadowElevation = if (selected) 3.dp else 0.dp,
-                    border = BorderStroke(
-                        1.dp,
-                        if (selected) {
-                            Color.White.copy(alpha = 0.34f)
-                        } else {
-                            Stone.copy(alpha = 0.54f)
-                        }
-                    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 234.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        plots.forEach { plot ->
+            val selected = plot.id == selectedPlotId
+            val plotActiveCount = insights.count { it.plot?.id == plot.id }
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .clickable { onSelectedPlotChange(plot.id) },
+                shape = RoundedCornerShape(16.dp),
+                color = if (selected) LeafDeep else Paper.copy(alpha = 0.80f),
+                shadowElevation = if (selected) 3.dp else 0.dp,
+                border = BorderStroke(
+                    1.dp,
+                    if (selected) Color.White.copy(alpha = 0.38f) else Stone.copy(alpha = 0.52f)
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(start = 12.dp, end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                        verticalArrangement = Arrangement.Center
-                    ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                plot.name,
+                                color = if (selected) Color.White else Ink,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 14.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (selected) {
+                                Text(
+                                    "当前",
+                                    color = Color.White.copy(alpha = 0.80f),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
                         Text(
-                            plot.name,
-                            color = if (selected) Color.White else Ink,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 14.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            "${plot.growingStyle.label} · $plotActiveCount 种植",
-                            color = if (selected) Color.White.copy(alpha = 0.78f) else Muted,
+                            "${plot.growingStyle.label} · ${plot.soilType} · $plotActiveCount 种植",
+                            color = if (selected) Color.White.copy(alpha = 0.76f) else Muted,
                             style = MaterialTheme.typography.labelSmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                    }
+                    Surface(
+                        modifier = Modifier
+                            .height(34.dp)
+                            .clickable { onDeletePlot(plot) },
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (selected) {
+                            Color.White.copy(alpha = 0.16f)
+                        } else {
+                            Color(0xFFFFE5DE)
+                        }
+                    ) {
+                        Box(
+                            modifier = Modifier.padding(horizontal = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "删除",
+                                color = if (selected) Color.White else Color(0xFFB34A3C),
+                                fontWeight = FontWeight.Black,
+                                fontSize = 11.sp
+                            )
+                        }
                     }
                 }
             }

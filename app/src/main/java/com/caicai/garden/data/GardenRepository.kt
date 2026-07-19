@@ -340,7 +340,8 @@ class GardenRepository(context: Context) {
                 type == FarmTileType.GRASS ||
                 type == FarmTileType.FENCE ||
                 type == FarmTileType.PATH ||
-                type == FarmTileType.IRRIGATION
+                type == FarmTileType.IRRIGATION ||
+                type == FarmTileType.SIGN
             ) {
                 null
             } else {
@@ -385,13 +386,10 @@ class GardenRepository(context: Context) {
                 FarmTile(row = row, column = column, type = FarmTileType.RAISED_BED, batchId = batch.id)
             }
         }
-        val structureTiles = listOf(
-            FarmTile(2, 4, FarmTileType.SIGN)
-        )
         return FarmLayout(
             rows = 8,
             columns = 8,
-            tiles = (structureTiles + plantTiles).distinctBy { it.row to it.column }
+            tiles = plantTiles.distinctBy { it.row to it.column }
         )
     }
 

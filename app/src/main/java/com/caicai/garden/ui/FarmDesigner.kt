@@ -1,5 +1,10 @@
 package com.caicai.garden.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -45,6 +50,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -88,7 +94,11 @@ private enum class FarmMapMode {
     LAYOUT
 }
 
-private val fixedFarmSceneryTypes = setOf(FarmTileType.TOOL_SHED, FarmTileType.GREENHOUSE)
+private val fixedFarmSceneryTypes = setOf(
+    FarmTileType.TOOL_SHED,
+    FarmTileType.GREENHOUSE,
+    FarmTileType.SIGN
+)
 
 private const val FARM_VIEWPORT_MIN_SCALE = 1f
 private const val FARM_VIEWPORT_MAX_SCALE = 2.8f
@@ -117,7 +127,10 @@ private fun farmIsoMetrics(rows: Int, columns: Int, widthToHeight: Float): FarmI
 fun FarmDesignerSection(
     viewModel: GardenViewModel,
     selectedPlotId: String? = null,
-    onSelectedPlotChange: (String) -> Unit
+    onSelectedPlotChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    immersive: Boolean = false,
+    bottomContentPadding: Dp = 0.dp
 ) {
     val state = viewModel.dataState
     val layout = state.farmLayoutFor(selectedPlotId)
@@ -129,6 +142,7 @@ fun FarmDesignerSection(
         .associateBy { it.row to it.column }
     var selectedCell by rememberSaveable(selectedPlotId) { mutableStateOf<Pair<Int, Int>?>(null) }
     var mapMode by rememberSaveable(selectedPlotId) { mutableStateOf(FarmMapMode.CARE) }
+    var controlsExpanded by rememberSaveable { mutableStateOf(false) }
     var activeMapSheet by remember(selectedPlotId) { mutableStateOf<GardenMapSheet?>(null) }
     var waterFeedback by remember(selectedPlotId) {
         mutableStateOf<Pair<String, String>?>(null)
@@ -157,169 +171,150 @@ fun FarmDesignerSection(
     }
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(26.dp),
+        modifier = if (immersive) {
+            modifier.fillMaxSize()
+        } else {
+            modifier
+                .fillMaxWidth()
+                .height(boardHeight)
+        },
+        shape = if (immersive) RectangleShape else RoundedCornerShape(26.dp),
         color = Color(0xFFE9F5D7)
     ) {
-        Column(
-            modifier = Modifier.padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        if (mapMode == FarmMapMode.CARE) "菜园养护" else "布局调整",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        if (mapMode == FarmMapMode.CARE) {
-                            "点击作物养护，点击空地种植 · 捏合缩放"
-                        } else {
-                            "按住作物拖动位置 · 捏合缩放"
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Surface(
-                    shape = RoundedCornerShape(18.dp),
-                    color = Color(0xFFFFF7E9).copy(alpha = 0.84f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.72f))
-                ) {
-                    Row(modifier = Modifier.padding(3.dp)) {
-                        FarmMapModeChip(
-                            label = "养护",
-                            selected = mapMode == FarmMapMode.CARE,
-                            onClick = {
-                                mapMode = FarmMapMode.CARE
-                                selectedCell = null
-                            }
+        Box(modifier = Modifier.fillMaxSize()) {
+            FarmAssetBoard(
+                rows = layout.rows,
+                columns = layout.columns,
+                tilesByCell = tilesByCell,
+                insightsByBatch = insightsByBatch,
+                interactionKey = if (mapMode == FarmMapMode.LAYOUT) "move" else "care",
+                modifier = Modifier.fillMaxSize(),
+                edgeToEdge = immersive,
+                selectedCell = selectedCell,
+                selectedBatchId = selectedInsight?.batch?.id,
+                selectedLabel = selectedLabel,
+                onTileMove = { fromRow, fromColumn, toRow, toColumn ->
+                    if (mapMode == FarmMapMode.LAYOUT) {
+                        viewModel.moveFarmTile(
+                            selectedPlotId,
+                            fromRow,
+                            fromColumn,
+                            toRow,
+                            toColumn
                         )
-                        FarmMapModeChip(
-                            label = "布局",
-                            selected = mapMode == FarmMapMode.LAYOUT,
-                            onClick = {
-                                mapMode = FarmMapMode.LAYOUT
-                                activeMapSheet = null
-                                selectedCell = null
-                            }
-                        )
+                        selectedCell = toRow to toColumn
                     }
+                },
+                onCellClick = { row, column ->
+                    val cell = row to column
+                    val currentTile = tilesByCell[cell]
+                    if (mapMode == FarmMapMode.LAYOUT) {
+                        selectedCell = currentTile?.let { cell }
+                    } else if (
+                        selectedPlotId != null &&
+                        (currentTile == null || currentTile.batchId != null)
+                    ) {
+                        selectedCell = if (selectedCell == cell) null else cell
+                        currentTile?.batchId
+                            ?.let { id -> state.batches.firstOrNull { it.id == id } }
+                            ?.plotId
+                            ?.let(onSelectedPlotChange)
+                    }
+                },
+                onTileSelect = { row, column ->
+                    selectedCell = row to column
                 }
+            )
+
+            FarmMapFloatingControls(
+                mapMode = mapMode,
+                expanded = controlsExpanded,
+                onExpandedChange = { controlsExpanded = it },
+                onModeChange = { mode ->
+                    mapMode = mode
+                    activeMapSheet = null
+                    selectedCell = null
+                    controlsExpanded = false
+                },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(
+                        top = 10.dp,
+                        end = 10.dp
+                    )
+                    .zIndex(4f)
+            )
+
+            if (mapMode == FarmMapMode.CARE && selectedCell != null) {
+                GardenMapActionDock(
+                    selectedCell = selectedCell!!,
+                    insight = selectedInsight,
+                    lastWaterLabel = mapLastWaterLabel(lastWaterTimestamp),
+                    onPlant = { activeMapSheet = GardenMapSheet.PLANT },
+                    onWater = {
+                        selectedInsight?.let { insight ->
+                            val recommendation = GardenAdvisor.waterRecommendation(
+                                insight = insight,
+                                weather = viewModel.weather
+                            )
+                            if (
+                                viewModel.addOperation(
+                                    batchId = insight.batch.id,
+                                    type = OperationType.WATER,
+                                    amountLabel = recommendation.amountLabel,
+                                    note = recommendation.note,
+                                    showMessage = false
+                                )
+                            ) {
+                                waterFeedback =
+                                    insight.crop.name to recommendation.feedbackDetail
+                            }
+                        }
+                    },
+                    onFertilize = {
+                        if (selectedInsight != null) {
+                            activeMapSheet = GardenMapSheet.FERTILIZE
+                        }
+                    },
+                    onHarvest = {
+                        if (selectedInsight != null) {
+                            activeMapSheet = GardenMapSheet.HARVEST
+                        }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(
+                            start = 10.dp,
+                            end = 10.dp,
+                            bottom = bottomContentPadding + 10.dp
+                        )
+                        .zIndex(5f)
+                )
+            } else if (mapMode == FarmMapMode.LAYOUT) {
+                GardenMapResetLayout(
+                    onClick = {
+                        selectedCell = null
+                        viewModel.resetFarmLayout(selectedPlotId)
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(
+                            end = 12.dp,
+                            bottom = bottomContentPadding + 12.dp
+                        )
+                        .zIndex(5f)
+                )
             }
 
-            Box {
-                FarmAssetBoard(
-                    rows = layout.rows,
-                    columns = layout.columns,
-                    tilesByCell = tilesByCell,
-                    insightsByBatch = insightsByBatch,
-                    interactionKey = if (mapMode == FarmMapMode.LAYOUT) "move" else "care",
-                    boardHeight = boardHeight,
-                    selectedCell = selectedCell,
-                    selectedBatchId = selectedInsight?.batch?.id,
-                    selectedLabel = selectedLabel,
-                    onTileMove = { fromRow, fromColumn, toRow, toColumn ->
-                        if (mapMode == FarmMapMode.LAYOUT) {
-                            viewModel.moveFarmTile(
-                                selectedPlotId,
-                                fromRow,
-                                fromColumn,
-                                toRow,
-                                toColumn
-                            )
-                            selectedCell = toRow to toColumn
-                        }
-                    },
-                    onCellClick = { row, column ->
-                        val cell = row to column
-                        val currentTile = tilesByCell[cell]
-                        if (mapMode == FarmMapMode.LAYOUT) {
-                            selectedCell = currentTile?.let { cell }
-                        } else if (currentTile == null || currentTile.batchId != null) {
-                            selectedCell = if (selectedCell == cell) null else cell
-                            currentTile?.batchId
-                                ?.let { id -> state.batches.firstOrNull { it.id == id } }
-                                ?.plotId
-                                ?.let(onSelectedPlotChange)
-                        }
-                    },
-                    onTileSelect = { row, column ->
-                        selectedCell = row to column
-                    }
+            waterFeedback?.let { feedback ->
+                GardenWaterFeedback(
+                    cropName = feedback.first,
+                    detail = feedback.second,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(horizontal = 18.dp)
+                        .zIndex(6f)
                 )
-
-                if (mapMode == FarmMapMode.CARE) {
-                    when {
-                        selectedCell != null -> {
-                            GardenMapActionDock(
-                                selectedCell = selectedCell!!,
-                                insight = selectedInsight,
-                                lastWaterLabel = mapLastWaterLabel(lastWaterTimestamp),
-                                onPlant = { activeMapSheet = GardenMapSheet.PLANT },
-                                onWater = {
-                                    selectedInsight?.let { insight ->
-                                        val recommendation = GardenAdvisor.waterRecommendation(
-                                            insight = insight,
-                                            weather = viewModel.weather
-                                        )
-                                        if (
-                                            viewModel.addOperation(
-                                                batchId = insight.batch.id,
-                                                type = OperationType.WATER,
-                                                amountLabel = recommendation.amountLabel,
-                                                note = recommendation.note,
-                                                showMessage = false
-                                            )
-                                        ) {
-                                            waterFeedback =
-                                                insight.crop.name to recommendation.feedbackDetail
-                                        }
-                                    }
-                                },
-                                onFertilize = {
-                                    if (selectedInsight != null) {
-                                        activeMapSheet = GardenMapSheet.FERTILIZE
-                                    }
-                                },
-                                onHarvest = {
-                                    if (selectedInsight != null) {
-                                        activeMapSheet = GardenMapSheet.HARVEST
-                                    }
-                                },
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(8.dp)
-                            )
-                        }
-
-                    }
-                } else {
-                    GardenMapResetLayout(
-                        onClick = {
-                            selectedCell = null
-                            viewModel.resetFarmLayout(selectedPlotId)
-                        },
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(10.dp)
-                    )
-                }
-
-                waterFeedback?.let { feedback ->
-                    GardenWaterFeedback(
-                        cropName = feedback.first,
-                        detail = feedback.second,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(horizontal = 18.dp)
-                    )
-                }
             }
         }
     }
@@ -387,6 +382,82 @@ fun FarmDesignerSection(
         }
 
         null -> Unit
+    }
+}
+
+@Composable
+private fun FarmMapFloatingControls(
+    mapMode: FarmMapMode,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onModeChange: (FarmMapMode) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.width(126.dp),
+        shape = RoundedCornerShape(20.dp),
+        color = Color(0xFFFFF7E9).copy(alpha = 0.95f),
+        shadowElevation = 10.dp,
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.78f))
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
+                    .clickable { onExpandedChange(!expanded) }
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    if (mapMode == FarmMapMode.CARE) "养护模式" else "布局模式",
+                    color = Color(0xFF2F6F4E),
+                    fontWeight = FontWeight.Black,
+                    fontSize = 13.sp
+                )
+                Text(
+                    if (expanded) "⌃" else "⌄",
+                    color = Color(0xFF2F6F4E),
+                    fontWeight = FontWeight.Black
+                )
+            }
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Column(
+                    modifier = Modifier.padding(start = 7.dp, end = 7.dp, bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        FarmMapModeChip(
+                            label = "养护",
+                            selected = mapMode == FarmMapMode.CARE,
+                            onClick = { onModeChange(FarmMapMode.CARE) }
+                        )
+                        FarmMapModeChip(
+                            label = "布局",
+                            selected = mapMode == FarmMapMode.LAYOUT,
+                            onClick = { onModeChange(FarmMapMode.LAYOUT) }
+                        )
+                    }
+                    Text(
+                        if (mapMode == FarmMapMode.CARE) {
+                            "点作物养护\n点空地种植"
+                        } else {
+                            "按住作物拖动\n双指缩放地图"
+                        },
+                        modifier = Modifier.padding(horizontal = 5.dp),
+                        color = Color(0xFF6A7768),
+                        fontSize = 10.sp,
+                        lineHeight = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
     }
 }
 
