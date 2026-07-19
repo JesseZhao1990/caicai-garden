@@ -1,6 +1,7 @@
 package com.caicai.garden.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,7 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -21,6 +21,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -48,11 +49,8 @@ fun AppUpdatePanel(
         UpdateUiState.Checking -> "正在连接版本服务，请稍候…"
         is UpdateUiState.UpToDate -> state.detail
         is UpdateUiState.Available -> "新版本 ${state.release.versionName} 已准备好"
-        is UpdateUiState.Downloading -> {
-            val progress = state.progress?.let { "$it%" } ?: ""
-            "正在安全下载安装包 $progress"
-        }
-        is UpdateUiState.InstallPermissionRequired -> "安装包已下载，授权后即可继续安装"
+        is UpdateUiState.Downloading -> "系统正在后台下载安装包，可离开此页面"
+        is UpdateUiState.InstallPermissionRequired -> "安装包已安全下载并校验，点击继续安装"
         is UpdateUiState.Error -> state.message
     }
     val actionLabel = when (state) {
@@ -70,7 +68,7 @@ fun AppUpdatePanel(
         is UpdateUiState.UpToDate -> "已是最新"
         is UpdateUiState.Available -> "发现新版"
         is UpdateUiState.Downloading -> "下载中"
-        is UpdateUiState.InstallPermissionRequired -> "等待授权"
+        is UpdateUiState.InstallPermissionRequired -> "等待安装"
         is UpdateUiState.Error -> "检查失败"
     }
     val statusColor = when (state) {
@@ -79,7 +77,7 @@ fun AppUpdatePanel(
         is UpdateUiState.Error -> UpdateError
         else -> UpdateMist
     }
-    val busy = state is UpdateUiState.Checking || state is UpdateUiState.Downloading
+    val showAction = state !is UpdateUiState.Checking && state !is UpdateUiState.Downloading
     val isUpdateAction = state is UpdateUiState.Available || state is UpdateUiState.InstallPermissionRequired
     val isStrongAction = isUpdateAction || state is UpdateUiState.Error
 
@@ -148,39 +146,66 @@ fun AppUpdatePanel(
                     style = MaterialTheme.typography.bodySmall,
                     color = UpdateMuted
                 )
-                Button(
-                    onClick = if (isUpdateAction) onUpdate else onCheck,
-                    enabled = !busy,
-                    modifier = Modifier.height(42.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isStrongAction) UpdateLeafDeep else UpdateMist,
-                        contentColor = if (isStrongAction) Color.White else UpdateLeafDeep,
-                        disabledContainerColor = UpdateMist.copy(alpha = 0.72f),
-                        disabledContentColor = UpdateMuted
-                    ),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp)
-                ) {
-                    Text(actionLabel, fontWeight = FontWeight.Black)
+                if (showAction) {
+                    Button(
+                        onClick = if (isUpdateAction) onUpdate else onCheck,
+                        modifier = Modifier.height(42.dp),
+                        shape = RoundedCornerShape(15.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isStrongAction) UpdateLeafDeep else UpdateMist,
+                            contentColor = if (isStrongAction) Color.White else UpdateLeafDeep
+                        ),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp)
+                    ) {
+                        Text(actionLabel, fontWeight = FontWeight.Black)
+                    }
                 }
             }
 
             if (state is UpdateUiState.Downloading) {
-                if (state.progress == null) {
-                    LinearProgressIndicator(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = UpdateLeafDeep,
-                        trackColor = UpdateMist
-                    )
-                } else {
-                    LinearProgressIndicator(
-                        progress = { state.progress / 100f },
-                        modifier = Modifier.fillMaxWidth(),
-                        color = UpdateLeafDeep,
-                        trackColor = UpdateMist
-                    )
-                }
+                BackgroundDownloadProgress(state.progress)
             }
+        }
+    }
+}
+
+@Composable
+private fun BackgroundDownloadProgress(progress: Int?) {
+    val normalizedProgress = (progress ?: 0).coerceIn(0, 100) / 100f
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(100.dp))
+                .background(UpdateMist)
+        ) {
+            if (normalizedProgress > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(normalizedProgress)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(100.dp))
+                        .background(UpdateLeafDeep)
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "后台下载已开启",
+                style = MaterialTheme.typography.labelSmall,
+                color = UpdateMuted
+            )
+            Text(
+                progress?.let { "${it.coerceIn(0, 100)}%" } ?: "准备中",
+                style = MaterialTheme.typography.labelSmall,
+                color = UpdateLeafDeep,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -199,7 +224,7 @@ fun AppUpdateDialog(
                 Text("更新内容", color = UpdateInk, fontWeight = FontWeight.Bold)
                 Text(release.notes, color = UpdateMuted, style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    "APK 来自 GitHub Releases，下载后将由 Android 系统确认安装。",
+                    "APK 来自 GitHub Releases。下载会交给 Android 系统在后台执行，离开此页面也会继续；完成后返回应用确认安装。",
                     style = MaterialTheme.typography.bodySmall,
                     color = UpdateMuted
                 )
@@ -211,7 +236,7 @@ fun AppUpdateDialog(
                 shape = RoundedCornerShape(15.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = UpdateLeafDeep)
             ) {
-                Text("下载并升级", fontWeight = FontWeight.Black)
+                Text("后台下载", fontWeight = FontWeight.Black)
             }
         },
         dismissButton = {
