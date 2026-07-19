@@ -13,8 +13,8 @@ android {
         applicationId = "com.caicai.garden"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.4.0"
+        versionCode = 6
+        versionName = "1.5.0"
 
         buildConfigField(
             "String",

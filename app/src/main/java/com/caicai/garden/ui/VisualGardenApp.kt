@@ -1,5 +1,10 @@
 package com.caicai.garden.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -34,9 +39,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -75,17 +77,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.caicai.garden.R
 import com.caicai.garden.data.CropLibrary
+import com.caicai.garden.data.CropProfile
 import com.caicai.garden.data.Garden
 import com.caicai.garden.data.GardenDataState
 import com.caicai.garden.data.GrowingStyle
 import com.caicai.garden.data.OperationRecord
 import com.caicai.garden.data.OperationType
-import com.caicai.garden.data.PlantingMethod
 import com.caicai.garden.data.Plot
 import com.caicai.garden.data.TaskPriority
 import com.caicai.garden.data.TaskReminder
+import com.caicai.garden.data.TaskType
 import com.caicai.garden.data.WeatherForecast
-import com.caicai.garden.data.growthOffsetDays
 import com.caicai.garden.domain.PlantingInsight
 import com.caicai.garden.update.AppUpdateManager
 import com.caicai.garden.update.UpdateUiState
@@ -97,14 +99,12 @@ private enum class VisualTab(val label: String, val symbol: String) {
     TODAY("今日", "今"),
     GARDEN("菜园", "园"),
     CALENDAR("日历", "历"),
-    RECORDS("记录", "记")
+    PROFILE("我的", "我")
 }
 
 private enum class VisualSheet {
     EDIT_GARDEN,
-    ADD_PLOT,
-    ADD_BATCH,
-    ADD_OPERATION
+    ADD_PLOT
 }
 
 private val WarmBackground = Color(0xFFF6F5E8)
@@ -130,6 +130,7 @@ fun VisualGardenApp(viewModel: GardenViewModel) {
     var activeSheet by remember { mutableStateOf<VisualSheet?>(null) }
     var selectedPlotId by rememberSaveable { mutableStateOf<String?>(null) }
     var dismissedReleaseTag by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingLifecycleTask by remember { mutableStateOf<TaskReminder?>(null) }
 
     val startUpdate: () -> Unit = {
         coroutineScope.launch {
@@ -153,20 +154,16 @@ fun VisualGardenApp(viewModel: GardenViewModel) {
     }
 
     val plots = viewModel.dataState.plots
-    LaunchedEffect(plots.firstOrNull()?.id) {
-        if (selectedPlotId == null) selectedPlotId = plots.firstOrNull()?.id
+    val plotIds = plots.map { it.id }
+    LaunchedEffect(plotIds) {
+        if (selectedPlotId !in plotIds) {
+            selectedPlotId = plots.firstOrNull()?.id
+        }
     }
 
     Scaffold(
         containerColor = WarmBackground,
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            when (selectedTab) {
-                VisualTab.TODAY, VisualTab.RECORDS -> GardenFab("记录") { activeSheet = VisualSheet.ADD_OPERATION }
-                VisualTab.GARDEN -> GardenFab("种菜") { activeSheet = VisualSheet.ADD_BATCH }
-                VisualTab.CALENDAR -> GardenFab("加地块") { activeSheet = VisualSheet.ADD_PLOT }
-            }
-        },
         bottomBar = {
             GardenBottomNav(selectedTab = selectedTab, onSelectedTabChange = { selectedTab = it })
         }
@@ -188,26 +185,75 @@ fun VisualGardenApp(viewModel: GardenViewModel) {
                     viewModel = viewModel,
                     onOpenMap = { selectedTab = VisualTab.GARDEN },
                     onRefreshWeather = viewModel::refreshWeather,
-                    updateState = updateState,
-                    onCheckUpdate = { coroutineScope.launch { updateManager.checkForUpdate() } },
-                    onStartUpdate = startUpdate
+                    onCompleteTask = { task ->
+                        if (task.type == TaskType.LIFECYCLE) {
+                            pendingLifecycleTask = task
+                        } else {
+                            viewModel.completeTask(task)
+                        }
+                    }
                 )
 
                 VisualTab.GARDEN -> VisualGardenScreen(
                     viewModel = viewModel,
-                    onSelectedPlotChange = { selectedPlotId = it }
+                    selectedPlotId = selectedPlotId,
+                    onSelectedPlotChange = { selectedPlotId = it },
+                    onAddPlot = { activeSheet = VisualSheet.ADD_PLOT }
                 )
 
                 VisualTab.CALENDAR -> VisualCalendarScreen(
                     tasks = viewModel.scheduleTasks,
-                    onComplete = viewModel::completeTask
+                    onComplete = { task ->
+                        if (task.type == TaskType.LIFECYCLE) {
+                            pendingLifecycleTask = task
+                        } else {
+                            viewModel.completeTask(task)
+                        }
+                    }
                 )
 
-                VisualTab.RECORDS -> VisualRecordsScreen(
-                    state = viewModel.dataState
+                VisualTab.PROFILE -> VisualProfileScreen(
+                    state = viewModel.dataState,
+                    updateState = updateState,
+                    onCheckUpdate = { coroutineScope.launch { updateManager.checkForUpdate() } },
+                    onStartUpdate = startUpdate
                 )
             }
         }
+    }
+
+    pendingLifecycleTask?.let { task ->
+        AlertDialog(
+            onDismissRequest = { pendingLifecycleTask = null },
+            shape = RoundedCornerShape(26.dp),
+            containerColor = Paper,
+            title = {
+                Text("结束这茬作物？", color = Ink, fontWeight = FontWeight.Black)
+            },
+            text = {
+                Text(
+                    "${task.title}\n\n确认后会停止后续养护提醒并清空地图上的菜格，历史记录仍会保留。",
+                    color = Muted
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.completeTask(task)
+                        pendingLifecycleTask = null
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = LeafDeep)
+                ) {
+                    Text("确认结束", fontWeight = FontWeight.Black)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingLifecycleTask = null }) {
+                    Text("暂不结束", color = Muted, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
     }
 
     when (activeSheet) {
@@ -228,24 +274,6 @@ fun VisualGardenApp(viewModel: GardenViewModel) {
             }
         )
 
-        VisualSheet.ADD_BATCH -> VisualAddPlantingDialog(
-            plots = viewModel.dataState.plots,
-            onDismiss = { activeSheet = null },
-            onSave = { plotId, cropId, variety, method, date, quantity ->
-                viewModel.addBatch(plotId, cropId, variety, method, date, quantity)
-                activeSheet = null
-            }
-        )
-
-        VisualSheet.ADD_OPERATION -> VisualRecordOperationDialog(
-            state = viewModel.dataState,
-            onDismiss = { activeSheet = null },
-            onSave = { batchId, type, amount, note ->
-                viewModel.addOperation(batchId, type, amount, note)
-                activeSheet = null
-            }
-        )
-
         null -> Unit
     }
 
@@ -256,25 +284,6 @@ fun VisualGardenApp(viewModel: GardenViewModel) {
             onDismiss = { dismissedReleaseTag = availableUpdate.release.tagName },
             onUpdate = startUpdate
         )
-    }
-}
-
-@Composable
-private fun GardenFab(label: String, onClick: () -> Unit) {
-    FloatingActionButton(
-        onClick = onClick,
-        containerColor = LeafDeep,
-        contentColor = Color.White,
-        shape = RoundedCornerShape(20.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text("+", fontSize = 24.sp, fontWeight = FontWeight.Black)
-            Text(label, fontWeight = FontWeight.Black)
-        }
     }
 }
 
@@ -318,9 +327,7 @@ private fun VisualTodayScreen(
     viewModel: GardenViewModel,
     onOpenMap: () -> Unit,
     onRefreshWeather: () -> Unit,
-    updateState: UpdateUiState,
-    onCheckUpdate: () -> Unit,
-    onStartUpdate: () -> Unit
+    onCompleteTask: (TaskReminder) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -344,16 +351,9 @@ private fun VisualTodayScreen(
             WeatherGlassCard(viewModel.weather, viewModel.weatherLoading, onRefreshWeather)
         }
         item {
-            AppUpdatePanel(
-                state = updateState,
-                onCheck = onCheckUpdate,
-                onUpdate = onStartUpdate
-            )
-        }
-        item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 viewModel.todayTasks.take(3).forEach { task ->
-                    VisualTaskCard(task = task, onComplete = viewModel::completeTask)
+                    VisualTaskCard(task = task, onComplete = onCompleteTask)
                 }
                 if (viewModel.todayTasks.isEmpty()) {
                     GlassPanel {
@@ -367,21 +367,181 @@ private fun VisualTodayScreen(
 }
 
 @Composable
+private fun VisualProfileScreen(
+    state: GardenDataState,
+    updateState: UpdateUiState,
+    onCheckUpdate: () -> Unit,
+    onStartUpdate: () -> Unit
+) {
+    val records = state.records.sortedByDescending { it.timestamp }
+    val weekStart = LocalDate.now().minusDays(6)
+    val weeklyRecords = records.filter { record ->
+        runCatching { LocalDateTime.parse(record.timestamp).toLocalDate() }
+            .getOrNull()
+            ?.isBefore(weekStart) == false
+    }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 112.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            PageHeader(
+                kicker = null,
+                title = "我的",
+                trailing = null
+            )
+        }
+        item {
+            GardenFootprintSummary(
+                weeklyRecords = weeklyRecords,
+                totalRecordCount = records.size
+            )
+        }
+        item {
+            Text(
+                "最近足迹",
+                color = Ink,
+                fontWeight = FontWeight.Black,
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
+        if (records.isEmpty()) {
+            item {
+                GlassPanel {
+                    Text("还没有菜园足迹", color = Ink, fontWeight = FontWeight.Black)
+                    Text(
+                        "在菜园里完成种植、浇水、施肥或采摘后，会自动出现在这里。",
+                        color = Muted,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        } else {
+            items(records.take(6), key = { it.id }) { record ->
+                RecordListItem(record, state)
+            }
+        }
+        item {
+            Text(
+                "应用服务",
+                color = Ink,
+                fontWeight = FontWeight.Black,
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
+        item {
+            AppUpdatePanel(
+                state = updateState,
+                onCheck = onCheckUpdate,
+                onUpdate = onStartUpdate
+            )
+        }
+    }
+}
+
+@Composable
+private fun GardenFootprintSummary(
+    weeklyRecords: List<OperationRecord>,
+    totalRecordCount: Int
+) {
+    GlassPanel(tint = Color(0xFFE8F3DF)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text("菜园足迹", color = Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                Text(
+                    "近 7 天 · 累计 $totalRecordCount 条",
+                    color = Muted,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Text("自然发生，自动留下", color = LeafDeep, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FootprintMetric(
+                label = "种植",
+                count = weeklyRecords.count {
+                    it.type == OperationType.SOW ||
+                        it.type == OperationType.TRANSPLANT ||
+                        it.type == OperationType.CUTTING ||
+                        it.type == OperationType.DIVISION
+                },
+                modifier = Modifier.weight(1f)
+            )
+            FootprintMetric(
+                label = "浇水",
+                count = weeklyRecords.count { it.type == OperationType.WATER },
+                modifier = Modifier.weight(1f)
+            )
+            FootprintMetric(
+                label = "施肥",
+                count = weeklyRecords.count { it.type == OperationType.FERTILIZE },
+                modifier = Modifier.weight(1f)
+            )
+            FootprintMetric(
+                label = "采摘",
+                count = weeklyRecords.count { it.type == OperationType.HARVEST },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun FootprintMetric(label: String, count: Int, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = Paper.copy(alpha = 0.78f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.72f))
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("$count 次", color = LeafDeep, fontWeight = FontWeight.Black, fontSize = 17.sp)
+            Text(label, color = Muted, style = MaterialTheme.typography.labelSmall)
+        }
+    }
+}
+
+@Composable
 private fun VisualGardenScreen(
     viewModel: GardenViewModel,
-    onSelectedPlotChange: (String) -> Unit
+    selectedPlotId: String?,
+    onSelectedPlotChange: (String) -> Unit,
+    onAddPlot: () -> Unit
 ) {
+    val plots = viewModel.dataState.plots
+    val selectedPlot = plots.firstOrNull { it.id == selectedPlotId } ?: plots.firstOrNull()
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 112.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item {
-            RealGardenHeader(viewModel = viewModel)
+            RealGardenHeader(
+                plots = plots,
+                selectedPlotId = selectedPlot?.id,
+                insights = viewModel.insights,
+                tasks = viewModel.todayTasks,
+                onSelectedPlotChange = onSelectedPlotChange,
+                onAddPlot = onAddPlot
+            )
         }
         item {
             FarmDesignerSection(
                 viewModel = viewModel,
+                selectedPlotId = selectedPlot?.id,
                 onSelectedPlotChange = onSelectedPlotChange
             )
         }
@@ -389,34 +549,199 @@ private fun VisualGardenScreen(
 }
 
 @Composable
-private fun RealGardenHeader(viewModel: GardenViewModel) {
-    val activeCount = viewModel.insights.size
-    val taskCount = viewModel.todayTasks.size
+private fun RealGardenHeader(
+    plots: List<Plot>,
+    selectedPlotId: String?,
+    insights: List<PlantingInsight>,
+    tasks: List<TaskReminder>,
+    onSelectedPlotChange: (String) -> Unit,
+    onAddPlot: () -> Unit
+) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val selectedPlot = plots.firstOrNull { it.id == selectedPlotId } ?: plots.firstOrNull()
+    val selectedIndex = plots.indexOfFirst { it.id == selectedPlot?.id }
+    val activeCount = insights.count { it.plot?.id == selectedPlot?.id }
+    val taskCount = tasks.count { it.plotId == selectedPlot?.id }
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(24.dp),
         color = Color(0xFFEAF6DE),
         shadowElevation = 5.dp,
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.72f))
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("我的实体菜园", color = Ink, fontWeight = FontWeight.Black, fontSize = 22.sp)
-                Text(
-                    "记录种子/种苗和日期，作物按自身周期逐日长大",
-                    color = Muted,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("我的实体菜园", color = Ink, fontWeight = FontWeight.Black, fontSize = 22.sp)
+                    Text(
+                        selectedPlot?.let {
+                            "${it.name} · ${it.growingStyle.label} · ${it.soilType} · ${it.sizeLabel}"
+                        } ?: "还没有地块，请先添加地块",
+                        color = Muted,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = Paper.copy(alpha = 0.76f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.68f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(start = 10.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)
+                    ) {
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                if (selectedIndex >= 0) "${selectedIndex + 1} / ${plots.size}" else "0 / 0",
+                                color = LeafDeep,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                if (selectedPlot != null) "$activeCount 种植 · $taskCount 待办" else "暂无地块",
+                                color = Muted,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Text(
+                            if (expanded) "⌃" else "⌄",
+                            color = LeafDeep,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 17.sp
+                        )
+                    }
+                }
             }
-            Column(horizontalAlignment = Alignment.End) {
-                Text("$activeCount 块", color = LeafDeep, fontWeight = FontWeight.Black)
-                Text("$taskCount 待办", color = Muted, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "地块管理",
+                            color = Ink,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 13.sp
+                        )
+                        Surface(
+                            modifier = Modifier.clickable(onClick = onAddPlot),
+                            shape = RoundedCornerShape(13.dp),
+                            color = Paper.copy(alpha = 0.82f),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.72f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Text("+", color = LeafDeep, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                                Text("添加地块", color = LeafDeep, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                    if (plots.isEmpty()) {
+                        Text(
+                            "还没有地块，添加后即可开始规划菜园。",
+                            color = Muted,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    } else {
+                        GardenPlotSwitcher(
+                            plots = plots,
+                            selectedPlotId = selectedPlot?.id,
+                            insights = insights,
+                            onSelectedPlotChange = { plotId ->
+                                onSelectedPlotChange(plotId)
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GardenPlotSwitcher(
+    plots: List<Plot>,
+    selectedPlotId: String?,
+    insights: List<PlantingInsight>,
+    onSelectedPlotChange: (String) -> Unit
+) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val gap = 7.dp
+        val optionWidth = if (plots.size <= 3) {
+            (maxWidth - gap * (plots.size - 1)) / plots.size.coerceAtLeast(1)
+        } else {
+            116.dp
+        }
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(gap)
+        ) {
+            items(plots, key = { it.id }) { plot ->
+                val selected = plot.id == selectedPlotId
+                val plotActiveCount = insights.count { it.plot?.id == plot.id }
+                Surface(
+                    modifier = Modifier
+                        .width(optionWidth)
+                        .height(54.dp)
+                        .clickable { onSelectedPlotChange(plot.id) },
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (selected) LeafDeep else Paper.copy(alpha = 0.76f),
+                    shadowElevation = if (selected) 3.dp else 0.dp,
+                    border = BorderStroke(
+                        1.dp,
+                        if (selected) {
+                            Color.White.copy(alpha = 0.34f)
+                        } else {
+                            Stone.copy(alpha = 0.54f)
+                        }
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            plot.name,
+                            color = if (selected) Color.White else Ink,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            "${plot.growingStyle.label} · $plotActiveCount 种植",
+                            color = if (selected) Color.White.copy(alpha = 0.78f) else Muted,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
             }
         }
     }
@@ -474,84 +799,33 @@ private fun VisualCalendarScreen(tasks: List<TaskReminder>, onComplete: (TaskRem
                 StoneTimelineItem(task, onComplete)
             }
         }
-        item {
-            GlassPanel(tint = Color(0xFFE4F3DE)) {
-                Text("天气风险", fontWeight = FontWeight.Black, color = Ink)
-                Text("高温或降雨会改变浇水、施肥窗口。建议每天早上看一眼日历。", color = Muted, style = MaterialTheme.typography.bodySmall)
-            }
-        }
     }
 }
 
 @Composable
-private fun VisualRecordsScreen(state: GardenDataState) {
-    val records = state.records.sortedByDescending { it.timestamp }
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 112.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            PageHeader(kicker = "操作、照片、产量", title = "菜园记录", trailing = "+")
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                RecordPhotoCard(
-                    title = records.getOrNull(0)?.type?.label ?: "番茄浇透",
-                    subtitle = records.getOrNull(0)?.timestamp?.recordDateLabel() ?: "今天",
-                    modifier = Modifier.weight(1f),
-                    crop = GardenCrop.TOMATO
-                )
-                RecordPhotoCard(
-                    title = records.getOrNull(1)?.type?.label ?: "黄瓜搭架",
-                    subtitle = records.getOrNull(1)?.timestamp?.recordDateLabel() ?: "昨天",
-                    modifier = Modifier.weight(1f),
-                    crop = GardenCrop.CUCUMBER
-                )
-            }
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                RecordPhotoCard("采摘记录", "小白菜 500g", Modifier.weight(1f), GardenCrop.LEAFY)
-                RecordPhotoCard("地块整理", "阳台箱", Modifier.weight(1f), GardenCrop.GREENHOUSE)
-            }
-        }
-        item {
-            GlassPanel {
-                Text("本周小结", fontWeight = FontWeight.Black, color = Ink)
-                Text(
-                    "浇水 ${records.count { it.type == OperationType.WATER }} 次，施肥 ${records.count { it.type == OperationType.FERTILIZE }} 次，采摘 ${records.count { it.type == OperationType.HARVEST }} 次。",
-                    color = Muted,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-        }
-        items(records.take(6), key = { it.id }) { record ->
-            RecordListItem(record, state)
-        }
-    }
-}
-
-@Composable
-private fun PageHeader(kicker: String, title: String, trailing: String) {
+private fun PageHeader(kicker: String?, title: String, trailing: String?) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Top
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(kicker, color = Muted, fontWeight = FontWeight.Black, fontSize = 12.sp)
+            kicker?.let {
+                Text(it, color = Muted, fontWeight = FontWeight.Black, fontSize = 12.sp)
+            }
             Text(title, color = Ink, fontWeight = FontWeight.Black, fontSize = 30.sp, lineHeight = 32.sp)
         }
-        Surface(
-            modifier = Modifier.size(48.dp),
-            shape = RoundedCornerShape(18.dp),
-            color = Color.White.copy(alpha = 0.72f),
-            shadowElevation = 8.dp,
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.76f))
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(trailing, color = LeafDeep, fontWeight = FontWeight.Black)
+        trailing?.let {
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(18.dp),
+                color = Color.White.copy(alpha = 0.72f),
+                shadowElevation = 8.dp,
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.76f))
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(it, color = LeafDeep, fontWeight = FontWeight.Black)
+                }
             }
         }
     }
@@ -917,30 +1191,6 @@ private fun StoneTimelineItem(task: TaskReminder, onComplete: (TaskReminder) -> 
 }
 
 @Composable
-private fun RecordPhotoCard(title: String, subtitle: String, modifier: Modifier = Modifier, crop: GardenCrop) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
-        color = Paper.copy(alpha = 0.95f),
-        shadowElevation = 10.dp,
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.76f))
-    ) {
-        Column(modifier = Modifier.padding(10.dp)) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(82.dp)
-                    .clip(RoundedCornerShape(18.dp))
-            ) {
-                GardenMapImage(Modifier.fillMaxSize(), crop = crop)
-            }
-            Text(title, modifier = Modifier.padding(top = 9.dp), fontWeight = FontWeight.Black, color = Ink, maxLines = 1)
-            Text(subtitle, color = Muted, style = MaterialTheme.typography.labelSmall)
-        }
-    }
-}
-
-@Composable
 private fun RecordListItem(record: OperationRecord, state: GardenDataState) {
     val batch = record.batchId?.let { id -> state.batches.firstOrNull { it.id == id } }
     val crop = batch?.let { CropLibrary.byId(it.cropId) }
@@ -983,6 +1233,15 @@ private enum class GardenCrop {
     CUCUMBER,
     LEAFY,
     GREENHOUSE
+}
+
+private fun gardenCropFor(crop: CropProfile?): GardenCrop {
+    return when {
+        crop == null -> GardenCrop.CENTER
+        crop.category.contains("瓜") -> GardenCrop.CUCUMBER
+        crop.category.contains("茄果") -> GardenCrop.TOMATO
+        else -> GardenCrop.LEAFY
+    }
 }
 
 @Composable
@@ -1033,7 +1292,7 @@ private fun VisualAddPlotDialog(
     var style by remember { mutableStateOf(GrowingStyle.OPEN_FIELD) }
     GardenDialog(title = "添加地块", onDismiss = onDismiss, onConfirm = { onSave(name, size, style, soil) }) {
         GardenField(name, { name = it }, "名称")
-        VisualDropdown("种植方式", style, GrowingStyle.values().toList(), { it.label }) { style = it }
+        GrowingStylePicker(selected = style, onSelect = { style = it })
         GardenField(soil, { soil = it }, "土壤")
         GardenField(size, { size = it }, "尺寸")
         Box(
@@ -1049,223 +1308,6 @@ private fun VisualAddPlotDialog(
                     .width(140.dp)
                     .height(74.dp)
             )
-        }
-    }
-}
-
-@Composable
-private fun VisualAddPlantingDialog(
-    plots: List<Plot>,
-    onDismiss: () -> Unit,
-    onSave: (String?, String, String, PlantingMethod, String, String) -> Unit
-) {
-    var plot by remember { mutableStateOf(plots.firstOrNull()) }
-    var crop by remember { mutableStateOf(CropLibrary.crops.first()) }
-    var variety by rememberSaveable { mutableStateOf("") }
-    var method by remember { mutableStateOf<PlantingMethod?>(null) }
-    var date by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
-    var quantity by rememberSaveable { mutableStateOf("") }
-    val parsedDate = runCatching { LocalDate.parse(date) }.getOrNull()
-    val dateError = when {
-        parsedDate == null -> "请输入 YYYY-MM-DD 格式的日期"
-        parsedDate.isAfter(LocalDate.now()) -> "种植日期不能晚于今天"
-        else -> null
-    }
-    val canSave = plot != null && method != null && dateError == null
-    val methodOffsetDays = method?.growthOffsetDays(crop) ?: 0
-    val estimatedHarvestStart = parsedDate?.plusDays(
-        (crop.harvestStartDay - methodOffsetDays).coerceAtLeast(0).toLong()
-    )
-
-    GardenDialog(
-        title = "种下新作物",
-        onDismiss = onDismiss,
-        onConfirm = {
-            method?.let { selectedMethod ->
-                onSave(plot?.id, crop.id, variety, selectedMethod, date, quantity)
-            }
-        },
-        confirmEnabled = canSave,
-        confirmLabel = "开始种植"
-    ) {
-        if (plots.isEmpty()) {
-            Text("还没有地块，请先添加地块", color = MaterialTheme.colorScheme.error)
-        } else {
-            VisualDropdown("地块", plot ?: plots.first(), plots, { it.name }) { plot = it }
-            Text("选择作物", color = Muted, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(CropLibrary.crops, key = { it.id }) { option ->
-                    val selected = option.id == crop.id
-                    Surface(
-                        modifier = Modifier
-                            .width(122.dp)
-                            .height(94.dp)
-                            .clickable { crop = option },
-                        shape = RoundedCornerShape(22.dp),
-                        color = if (selected) Color(0xFFFFF3DF) else GardenMist,
-                        border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) Color(0xFFD7A252) else Color.White.copy(alpha = 0.7f))
-                    ) {
-                        Box {
-                            GardenMapImage(
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .size(86.dp)
-                                    .clip(RoundedCornerShape(18.dp)),
-                                crop = if (option.category.contains("瓜")) GardenCrop.CUCUMBER else if (option.category.contains("茄")) GardenCrop.TOMATO else GardenCrop.LEAFY
-                            )
-                            Column(modifier = Modifier.padding(11.dp)) {
-                                Text(option.name, fontWeight = FontWeight.Black, color = Ink)
-                                Text("${option.harvestStartDay}-${option.harvestEndDay} 天", color = Muted, style = MaterialTheme.typography.labelSmall)
-                            }
-                        }
-                    }
-                }
-            }
-            GardenField(variety, { variety = it }, "品种")
-
-            Text("你种下的是？", color = Ink, fontWeight = FontWeight.Black)
-            Text(
-                "必须选择种子、种苗或插条；它会改变起始长势和预计采收时间。",
-                color = Muted,
-                style = MaterialTheme.typography.bodySmall
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                PlantingMethod.values().forEach { option ->
-                    PlantingMethodChoice(
-                        method = option,
-                        selected = method == option,
-                        onClick = { method = option },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
-            GardenField(
-                value = date,
-                onValueChange = { date = it },
-                label = "${method?.dateLabel ?: "种植日期"} YYYY-MM-DD"
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    dateError ?: (method?.predictionHint ?: "选择种植方式后开始预测"),
-                    modifier = Modifier.weight(1f),
-                    color = if (dateError == null) Muted else MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall
-                )
-                TextButton(onClick = { date = LocalDate.now().toString() }) {
-                    Text("今天")
-                }
-            }
-
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                color = GardenMist,
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.72f))
-            ) {
-                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("生长预测", color = Ink, fontWeight = FontWeight.Black)
-                    Text(
-                        "${crop.name}完整生长周期约 ${crop.harvestStartDay}-${crop.harvestEndDay} 天",
-                        color = Muted,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Text(
-                        if (method == null || estimatedHarvestStart == null) {
-                            "选择种植方式和有效日期后显示预计采收时间"
-                        } else {
-                            "${method?.materialLabel}起始生长 +$methodOffsetDays 天 · 预计 ${estimatedHarvestStart} 起可采收"
-                        },
-                        color = LeafDeep,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-            GardenField(quantity, { quantity = it }, "数量/面积")
-        }
-    }
-}
-
-@Composable
-private fun PlantingMethodChoice(
-    method: PlantingMethod,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = if (selected) Color(0xFFDDEFD2) else Paper,
-        border = BorderStroke(
-            if (selected) 2.dp else 1.dp,
-            if (selected) LeafDeep else Stone
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Text(method.materialLabel, color = if (selected) LeafDeep else Ink, fontWeight = FontWeight.Black)
-            Text(method.label, color = Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1)
-        }
-    }
-}
-
-@Composable
-private fun VisualRecordOperationDialog(
-    state: GardenDataState,
-    onDismiss: () -> Unit,
-    onSave: (String?, OperationType, String, String) -> Unit
-) {
-    val batches = state.batches
-    var selectedBatchId by rememberSaveable { mutableStateOf(batches.firstOrNull()?.id) }
-    var type by remember { mutableStateOf(OperationType.WATER) }
-    var amount by rememberSaveable { mutableStateOf("浇透") }
-    var note by rememberSaveable { mutableStateOf("") }
-    GardenDialog(title = "记录操作", onDismiss = onDismiss, onConfirm = { onSave(selectedBatchId, type, amount, note) }) {
-        if (batches.isNotEmpty()) {
-            VisualDropdown(
-                label = "关联批次",
-                selected = batches.firstOrNull { it.id == selectedBatchId } ?: batches.first(),
-                options = batches,
-                labeler = { batch ->
-                    val crop = CropLibrary.byId(batch.cropId)
-                    val plot = state.plots.firstOrNull { it.id == batch.plotId }
-                    "${plot?.name ?: "未分配"} · ${crop.name}"
-                },
-                onSelect = { selectedBatchId = it.id }
-            )
-        }
-        VisualDropdown("类型", type, OperationType.values().toList(), { it.label }) { type = it }
-        GardenField(amount, { amount = it }, "用量/产量")
-        GardenField(note, { note = it }, "备注")
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(116.dp)
-                .clip(RoundedCornerShape(22.dp))
-        ) {
-            GardenMapImage(Modifier.fillMaxSize(), GardenCrop.TOMATO)
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(10.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = Paper.copy(alpha = 0.86f)
-            ) {
-                Text("1 号畦 · 番茄", modifier = Modifier.padding(10.dp), fontWeight = FontWeight.Black, color = Ink)
-            }
         }
     }
 }
@@ -1322,30 +1364,49 @@ private fun GardenField(
 }
 
 @Composable
-private fun <T> VisualDropdown(
-    label: String,
-    selected: T,
-    options: List<T>,
-    labeler: (T) -> String,
-    onSelect: (T) -> Unit
+private fun GrowingStylePicker(
+    selected: GrowingStyle,
+    onSelect: (GrowingStyle) -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(label, color = Muted, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
-        Box {
-            OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
-                Text(labeler(selected), modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("v")
-            }
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                options.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(labeler(option)) },
-                        onClick = {
-                            onSelect(option)
-                            expanded = false
+        Text(
+            text = "种植方式",
+            color = Muted,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Black
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            GrowingStyle.values().forEach { option ->
+                val isSelected = selected == option
+                Surface(
+                    onClick = { onSelect(option) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(46.dp),
+                    shape = RoundedCornerShape(15.dp),
+                    color = if (isSelected) LeafDeep else GardenMist,
+                    contentColor = if (isSelected) Color.White else LeafDeep,
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = if (isSelected) {
+                            Color.White.copy(alpha = 0.34f)
+                        } else {
+                            Stone.copy(alpha = 0.62f)
                         }
-                    )
+                    ),
+                    shadowElevation = if (isSelected) 3.dp else 0.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = option.label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Black,
+                            maxLines = 1
+                        )
+                    }
                 }
             }
         }

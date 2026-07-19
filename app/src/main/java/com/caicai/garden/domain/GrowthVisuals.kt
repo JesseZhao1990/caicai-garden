@@ -115,6 +115,83 @@ object CropVisualLibrary {
         )
     }
 
+    private fun adaptiveProfile(
+        cropId: String,
+        assetCropName: String,
+        groundingStyle: CropGroundingStyle,
+        growthCurve: VisualGrowthCurve,
+        heightScaleOverride: Float? = null
+    ): CropVisualProfile {
+        val (anchors, widths) = when (groundingStyle) {
+            CropGroundingStyle.STEM ->
+                listOf(0.98f, 0.98f, 0.98f, 0.98f) to
+                    listOf(0.28f to 0.44f, 0.44f to 0.72f, 0.72f to 1.00f, 1.00f to 1.15f)
+            CropGroundingStyle.ROSETTE ->
+                listOf(0.96f, 0.95f, 0.94f, 0.93f) to
+                    listOf(0.22f to 0.30f, 0.30f to 0.50f, 0.50f to 0.78f, 0.78f to 0.95f)
+            CropGroundingStyle.SPRAWLING ->
+                listOf(0.84f, 0.78f, 0.72f, 0.68f) to
+                    listOf(0.28f to 0.45f, 0.45f to 0.78f, 0.78f to 1.05f, 1.05f to 1.20f)
+            CropGroundingStyle.CLUMP ->
+                listOf(0.98f, 0.98f, 0.98f, 0.98f) to
+                    listOf(0.22f to 0.32f, 0.32f to 0.50f, 0.50f to 0.72f, 0.72f to 0.88f)
+            CropGroundingStyle.BULB ->
+                listOf(0.98f, 0.92f, 0.72f, 0.48f) to
+                    listOf(0.18f to 0.28f, 0.28f to 0.44f, 0.44f to 0.62f, 0.62f to 0.76f)
+            CropGroundingStyle.ROOT ->
+                listOf(0.98f, 0.82f, 0.62f, 0.40f) to
+                    listOf(0.20f to 0.28f, 0.28f to 0.46f, 0.46f to 0.70f, 0.70f to 0.86f)
+        }
+        val heightScale = heightScaleOverride ?: when (groundingStyle) {
+            CropGroundingStyle.STEM -> 1.08f
+            CropGroundingStyle.ROSETTE -> 0.90f
+            CropGroundingStyle.SPRAWLING -> 1.05f
+            CropGroundingStyle.CLUMP -> 1.00f
+            CropGroundingStyle.BULB -> 1.12f
+            CropGroundingStyle.ROOT -> 0.98f
+        }
+        val shadowWidth = when (groundingStyle) {
+            CropGroundingStyle.STEM -> 0.62f
+            CropGroundingStyle.ROSETTE -> 0.72f
+            CropGroundingStyle.SPRAWLING -> 0.66f
+            CropGroundingStyle.CLUMP -> 0.68f
+            CropGroundingStyle.BULB -> 0.58f
+            CropGroundingStyle.ROOT -> 0.64f
+        }
+        val windFlex = when (groundingStyle) {
+            CropGroundingStyle.STEM, CropGroundingStyle.SPRAWLING -> 1.02f
+            CropGroundingStyle.CLUMP, CropGroundingStyle.BULB -> 0.84f
+            CropGroundingStyle.ROSETTE, CropGroundingStyle.ROOT -> 0.78f
+        }
+        val soilContactWidth = when (groundingStyle) {
+            CropGroundingStyle.STEM -> 0.24f
+            CropGroundingStyle.ROSETTE -> 0.46f
+            CropGroundingStyle.SPRAWLING -> 0.30f
+            CropGroundingStyle.CLUMP -> 0.42f
+            CropGroundingStyle.BULB -> 0.38f
+            CropGroundingStyle.ROOT -> 0.32f
+        }
+        val embedDepth = when (groundingStyle) {
+            CropGroundingStyle.ROOT, CropGroundingStyle.BULB -> 0.025f
+            CropGroundingStyle.ROSETTE, CropGroundingStyle.CLUMP -> 0.040f
+            CropGroundingStyle.STEM -> 0.035f
+            CropGroundingStyle.SPRAWLING -> 0.025f
+        }
+        return profile(
+            cropId = cropId,
+            assetCropName = assetCropName,
+            heightScale = heightScale,
+            shadowWidthFactor = shadowWidth,
+            windFlex = windFlex,
+            growthCurve = growthCurve,
+            groundingStyle = groundingStyle,
+            soilContactWidthFactor = soilContactWidth,
+            embedDepthTiles = embedDepth,
+            groundAnchors = anchors,
+            widths = widths
+        )
+    }
+
     val profiles: Map<String, CropVisualProfile> = listOf(
         profile(
             "tomato", "tomato", 1.15f, 0.62f, 1.08f, VisualGrowthCurve.SMOOTH,
@@ -205,7 +282,24 @@ object CropVisualLibrary {
             CropGroundingStyle.SPRAWLING, 0.30f, 0.025f,
             listOf(0.84f, 0.78f, 0.72f, 0.68f),
             listOf(0.32f to 0.50f, 0.50f to 0.84f, 0.84f to 1.12f, 1.12f to 1.25f)
-        )
+        ),
+        adaptiveProfile("basil", "basil", CropGroundingStyle.CLUMP, VisualGrowthCurve.FAST_EARLY),
+        adaptiveProfile("bell_pepper", "bell_pepper", CropGroundingStyle.STEM, VisualGrowthCurve.SMOOTH),
+        adaptiveProfile("bitter_melon", "bitter_melon", CropGroundingStyle.SPRAWLING, VisualGrowthCurve.FAST_EARLY),
+        adaptiveProfile("cabbage", "cabbage", CropGroundingStyle.ROSETTE, VisualGrowthCurve.ROSETTE),
+        adaptiveProfile("celery", "celery", CropGroundingStyle.CLUMP, VisualGrowthCurve.UPRIGHT, 1.20f),
+        adaptiveProfile("cherry_tomato", "cherry_tomato", CropGroundingStyle.STEM, VisualGrowthCurve.SMOOTH),
+        adaptiveProfile("corn", "corn", CropGroundingStyle.STEM, VisualGrowthCurve.UPRIGHT, 1.35f),
+        adaptiveProfile("garlic", "garlic", CropGroundingStyle.BULB, VisualGrowthCurve.UPRIGHT),
+        adaptiveProfile("kale", "kale", CropGroundingStyle.ROSETTE, VisualGrowthCurve.ROSETTE),
+        adaptiveProfile("mint", "mint", CropGroundingStyle.CLUMP, VisualGrowthCurve.FAST_EARLY),
+        adaptiveProfile("okra", "okra", CropGroundingStyle.STEM, VisualGrowthCurve.UPRIGHT, 1.20f),
+        adaptiveProfile("onion", "onion", CropGroundingStyle.BULB, VisualGrowthCurve.LATE_SWELL),
+        adaptiveProfile("potato", "potato", CropGroundingStyle.ROOT, VisualGrowthCurve.LATE_SWELL),
+        adaptiveProfile("pumpkin", "pumpkin", CropGroundingStyle.SPRAWLING, VisualGrowthCurve.FAST_EARLY),
+        adaptiveProfile("snow_pea", "snow_pea", CropGroundingStyle.SPRAWLING, VisualGrowthCurve.FAST_EARLY),
+        adaptiveProfile("strawberry", "strawberry", CropGroundingStyle.ROSETTE, VisualGrowthCurve.ROSETTE),
+        adaptiveProfile("sweet_potato", "sweet_potato", CropGroundingStyle.ROOT, VisualGrowthCurve.LATE_SWELL)
     ).associateBy(CropVisualProfile::cropId)
 
     fun forCrop(crop: CropProfile): CropVisualProfile {

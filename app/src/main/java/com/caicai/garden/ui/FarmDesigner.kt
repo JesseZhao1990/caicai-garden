@@ -1,5 +1,6 @@
 package com.caicai.garden.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -20,15 +21,13 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -66,25 +65,27 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.caicai.garden.R
-import com.caicai.garden.data.BatchStatus
-import com.caicai.garden.data.CropLibrary
 import com.caicai.garden.data.FarmTile
 import com.caicai.garden.data.FarmTileType
-import com.caicai.garden.data.PlantingBatch
+import com.caicai.garden.data.OperationType
+import com.caicai.garden.data.farmLayoutFor
+import com.caicai.garden.domain.GardenAdvisor
 import com.caicai.garden.domain.PlantingInsight
+import kotlinx.coroutines.delay
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 import kotlin.math.roundToInt
-
-private sealed class FarmTool {
-    data object Move : FarmTool()
-    data class Plant(val batchId: String) : FarmTool()
-    data class Structure(val type: FarmTileType) : FarmTool()
-    data object Clear : FarmTool()
-}
 
 private enum class FarmGestureMode {
     TileDrag,
     ViewportPan,
     Ignore
+}
+
+private enum class FarmMapMode {
+    CARE,
+    LAYOUT
 }
 
 private val fixedFarmSceneryTypes = setOf(FarmTileType.TOOL_SHED, FarmTileType.GREENHOUSE)
@@ -115,27 +116,49 @@ private fun farmIsoMetrics(rows: Int, columns: Int, widthToHeight: Float): FarmI
 @Composable
 fun FarmDesignerSection(
     viewModel: GardenViewModel,
+    selectedPlotId: String? = null,
     onSelectedPlotChange: (String) -> Unit
 ) {
     val state = viewModel.dataState
-    val layout = state.farmLayout
-    val activeBatches = state.batches.filter { it.status != BatchStatus.FINISHED }
-    val insightsByBatch = viewModel.insights.associateBy { it.batch.id }
+    val layout = state.farmLayoutFor(selectedPlotId)
+    val insightsByBatch = viewModel.insights
+        .filter { selectedPlotId == null || it.batch.plotId == selectedPlotId }
+        .associateBy { it.batch.id }
     val tilesByCell = layout.tiles
         .filterNot { it.type in fixedFarmSceneryTypes }
         .associateBy { it.row to it.column }
-    var selectedTool by rememberSaveable { mutableStateOf<String?>(null) }
-    var selectedCell by rememberSaveable { mutableStateOf<Pair<Int, Int>?>(null) }
-    var pendingMoveCell by rememberSaveable { mutableStateOf<Pair<Int, Int>?>(null) }
+    var selectedCell by rememberSaveable(selectedPlotId) { mutableStateOf<Pair<Int, Int>?>(null) }
+    var mapMode by rememberSaveable(selectedPlotId) { mutableStateOf(FarmMapMode.CARE) }
+    var activeMapSheet by remember(selectedPlotId) { mutableStateOf<GardenMapSheet?>(null) }
+    var waterFeedback by remember(selectedPlotId) {
+        mutableStateOf<Pair<String, String>?>(null)
+    }
 
     val selectedTile = selectedCell?.let { tilesByCell[it] }
     val selectedInsight = selectedTile?.batchId?.let { insightsByBatch[it] }
+    val selectedLabel = selectedCell?.let { cell ->
+        selectedInsight?.let { "${gardenCellLabel(cell)} · ${it.crop.name}" }
+            ?: "${gardenCellLabel(cell)} · 空闲"
+    }
+    val lastWaterTimestamp = selectedInsight?.batch?.id?.let { batchId ->
+        state.records
+            .asReversed()
+            .firstOrNull { it.batchId == batchId && it.type == OperationType.WATER }
+            ?.timestamp
+    }
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val boardHeight = (screenHeight * 0.64f).coerceIn(540.dp, 760.dp)
+    val boardHeight = (screenHeight * 0.69f).coerceIn(560.dp, 760.dp)
+
+    LaunchedEffect(waterFeedback) {
+        if (waterFeedback != null) {
+            delay(1_800)
+            waterFeedback = null
+        }
+    }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
+        shape = RoundedCornerShape(26.dp),
         color = Color(0xFFE9F5D7)
     ) {
         Column(
@@ -148,99 +171,258 @@ fun FarmDesignerSection(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("真实菜畦布局", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text(
-                        "${layout.rows} x ${layout.columns} 对应实体菜园 · 拖拽移动 · 捏合缩放",
+                        if (mapMode == FarmMapMode.CARE) "菜园养护" else "布局调整",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        if (mapMode == FarmMapMode.CARE) {
+                            "点击作物养护，点击空地种植 · 捏合缩放"
+                        } else {
+                            "按住作物拖动位置 · 捏合缩放"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                OutlinedButton(onClick = viewModel::resetFarmLayout) {
-                    Text("重置")
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = Color(0xFFFFF7E9).copy(alpha = 0.84f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.72f))
+                ) {
+                    Row(modifier = Modifier.padding(3.dp)) {
+                        FarmMapModeChip(
+                            label = "养护",
+                            selected = mapMode == FarmMapMode.CARE,
+                            onClick = {
+                                mapMode = FarmMapMode.CARE
+                                selectedCell = null
+                            }
+                        )
+                        FarmMapModeChip(
+                            label = "布局",
+                            selected = mapMode == FarmMapMode.LAYOUT,
+                            onClick = {
+                                mapMode = FarmMapMode.LAYOUT
+                                activeMapSheet = null
+                                selectedCell = null
+                            }
+                        )
+                    }
                 }
             }
 
-            FarmAssetBoard(
-                rows = layout.rows,
-                columns = layout.columns,
-                tilesByCell = tilesByCell,
-                insightsByBatch = insightsByBatch,
-                interactionKey = selectedTool,
-                boardHeight = boardHeight,
-                onTileMove = { fromRow, fromColumn, toRow, toColumn ->
-                    viewModel.moveFarmTile(fromRow, fromColumn, toRow, toColumn)
-                    pendingMoveCell = null
-                    selectedCell = toRow to toColumn
-                },
-                onCellClick = { row, column ->
-                    selectedCell = row to column
-                    val currentTile = tilesByCell[row to column]
-                    when (val currentTool = selectedTool?.toFarmTool()) {
-                        null -> {
-                            pendingMoveCell = null
+            Box {
+                FarmAssetBoard(
+                    rows = layout.rows,
+                    columns = layout.columns,
+                    tilesByCell = tilesByCell,
+                    insightsByBatch = insightsByBatch,
+                    interactionKey = if (mapMode == FarmMapMode.LAYOUT) "move" else "care",
+                    boardHeight = boardHeight,
+                    selectedCell = selectedCell,
+                    selectedBatchId = selectedInsight?.batch?.id,
+                    selectedLabel = selectedLabel,
+                    onTileMove = { fromRow, fromColumn, toRow, toColumn ->
+                        if (mapMode == FarmMapMode.LAYOUT) {
+                            viewModel.moveFarmTile(
+                                selectedPlotId,
+                                fromRow,
+                                fromColumn,
+                                toRow,
+                                toColumn
+                            )
+                            selectedCell = toRow to toColumn
+                        }
+                    },
+                    onCellClick = { row, column ->
+                        val cell = row to column
+                        val currentTile = tilesByCell[cell]
+                        if (mapMode == FarmMapMode.LAYOUT) {
+                            selectedCell = currentTile?.let { cell }
+                        } else if (currentTile == null || currentTile.batchId != null) {
+                            selectedCell = if (selectedCell == cell) null else cell
                             currentTile?.batchId
                                 ?.let { id -> state.batches.firstOrNull { it.id == id } }
                                 ?.plotId
                                 ?.let(onSelectedPlotChange)
                         }
-
-                        FarmTool.Move -> {
-                            val fromCell = pendingMoveCell?.takeIf { tilesByCell[it] != null }
-                            if (fromCell == null) {
-                                pendingMoveCell = currentTile?.let { row to column }
-                            } else {
-                                viewModel.moveFarmTile(fromCell.first, fromCell.second, row, column)
-                                pendingMoveCell = null
-                            }
-                        }
-
-                        FarmTool.Clear -> {
-                            pendingMoveCell = null
-                            viewModel.clearFarmTile(row, column)
-                        }
-
-                        is FarmTool.Plant -> {
-                            pendingMoveCell = null
-                            viewModel.placeFarmTile(row, column, FarmTileType.RAISED_BED, currentTool.batchId)
-                        }
-
-                        is FarmTool.Structure -> {
-                            pendingMoveCell = null
-                            viewModel.placeFarmTile(row, column, currentTool.type, null)
-                        }
+                    },
+                    onTileSelect = { row, column ->
+                        selectedCell = row to column
                     }
-                },
-                onTileSelect = { row, column ->
-                    pendingMoveCell = null
-                    selectedCell = row to column
-                }
-            )
+                )
 
-            if (selectedTile != null) {
-                FarmSelectionPanel(
-                    tile = selectedTile,
-                    insight = selectedInsight,
-                    onRotateLeft = selectedCell?.let { (row, column) ->
-                        { viewModel.rotateFarmTile(row, column, -15f) }
-                    },
-                    onRotateRight = selectedCell?.let { (row, column) ->
-                        { viewModel.rotateFarmTile(row, column, 15f) }
-                    },
-                    onResetRotation = selectedCell?.let { (row, column) ->
-                        { viewModel.resetFarmTileRotation(row, column) }
+                if (mapMode == FarmMapMode.CARE) {
+                    when {
+                        selectedCell != null -> {
+                            GardenMapActionDock(
+                                selectedCell = selectedCell!!,
+                                insight = selectedInsight,
+                                lastWaterLabel = mapLastWaterLabel(lastWaterTimestamp),
+                                onPlant = { activeMapSheet = GardenMapSheet.PLANT },
+                                onWater = {
+                                    selectedInsight?.let { insight ->
+                                        val recommendation = GardenAdvisor.waterRecommendation(
+                                            insight = insight,
+                                            weather = viewModel.weather
+                                        )
+                                        if (
+                                            viewModel.addOperation(
+                                                batchId = insight.batch.id,
+                                                type = OperationType.WATER,
+                                                amountLabel = recommendation.amountLabel,
+                                                note = recommendation.note,
+                                                showMessage = false
+                                            )
+                                        ) {
+                                            waterFeedback =
+                                                insight.crop.name to recommendation.feedbackDetail
+                                        }
+                                    }
+                                },
+                                onFertilize = {
+                                    if (selectedInsight != null) {
+                                        activeMapSheet = GardenMapSheet.FERTILIZE
+                                    }
+                                },
+                                onHarvest = {
+                                    if (selectedInsight != null) {
+                                        activeMapSheet = GardenMapSheet.HARVEST
+                                    }
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(8.dp)
+                            )
+                        }
+
+                    }
+                } else {
+                    GardenMapResetLayout(
+                        onClick = {
+                            selectedCell = null
+                            viewModel.resetFarmLayout(selectedPlotId)
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(10.dp)
+                    )
+                }
+
+                waterFeedback?.let { feedback ->
+                    GardenWaterFeedback(
+                        cropName = feedback.first,
+                        detail = feedback.second,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(horizontal = 18.dp)
+                    )
+                }
+            }
+        }
+    }
+
+    when (activeMapSheet) {
+        GardenMapSheet.PLANT -> {
+            val cell = selectedCell
+            if (cell != null && selectedPlotId != null) {
+                GardenMapPlantSheet(
+                    cell = cell,
+                    onDismiss = { activeMapSheet = null },
+                    onConfirm = { draft ->
+                        viewModel.addBatch(
+                            plotId = selectedPlotId,
+                            cropId = draft.cropId,
+                            variety = "",
+                            method = draft.method,
+                            startDate = draft.date,
+                            quantityLabel = draft.quantity,
+                            targetRow = cell.first,
+                            targetColumn = cell.second,
+                            showMessage = false
+                        )
+                        activeMapSheet = null
                     }
                 )
             }
+        }
 
-            FarmToolPicker(
-                activeBatches = activeBatches,
-                selectedTool = selectedTool,
-                onSelectedToolChange = {
-                    pendingMoveCell = null
-                    selectedTool = it
-                }
+        GardenMapSheet.FERTILIZE -> {
+            selectedInsight?.let { insight ->
+                GardenMapFertilizerSheet(
+                    insight = insight,
+                    onDismiss = { activeMapSheet = null },
+                    onConfirm = { draft ->
+                        viewModel.addOperation(
+                            batchId = insight.batch.id,
+                            type = OperationType.FERTILIZE,
+                            amountLabel = draft.amountLabel,
+                            note = draft.note
+                        )
+                        activeMapSheet = null
+                    }
+                )
+            }
+        }
+
+        GardenMapSheet.HARVEST -> {
+            selectedInsight?.let { insight ->
+                GardenMapHarvestSheet(
+                    insight = insight,
+                    onDismiss = { activeMapSheet = null },
+                    onConfirm = { draft ->
+                        viewModel.harvestBatch(
+                            batchId = insight.batch.id,
+                            amountLabel = draft.amountLabel,
+                            quality = draft.quality,
+                            finishAndClear = draft.finishAndClear
+                        )
+                        if (draft.finishAndClear) selectedCell = null
+                        activeMapSheet = null
+                    }
+                )
+            }
+        }
+
+        null -> Unit
+    }
+}
+
+@Composable
+private fun FarmMapModeChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .width(50.dp)
+            .height(36.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(14.dp),
+        color = if (selected) Color(0xFF2F6F4E) else Color.Transparent,
+        shadowElevation = if (selected) 2.dp else 0.dp
+    ) {
+        Box(
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                label,
+                color = if (selected) Color.White else Color(0xFF2F6F4E),
+                fontWeight = FontWeight.Black,
+                fontSize = 13.sp
             )
         }
+    }
+}
+
+private fun mapLastWaterLabel(timestamp: String?): String {
+    val date = timestamp
+        ?.let { runCatching { LocalDateTime.parse(it).toLocalDate() }.getOrNull() }
+        ?: return "暂无浇水记录"
+    val days = ChronoUnit.DAYS.between(date, LocalDate.now()).coerceAtLeast(0)
+    return when (days) {
+        0L -> "今天已浇水"
+        1L -> "上次浇水 昨天"
+        else -> "上次浇水 ${days}天前"
     }
 }
 
@@ -293,7 +475,6 @@ private fun FarmBoard(
                         }
                         return@awaitEachGesture
                     }
-                    val moveToolSelected = currentInteractionKey == FarmTool.Move.toToolKey()
                     val startScenePosition = boardToFarmSceneOffset(
                         position = start,
                         viewportOffset = Offset(viewportOffsetX, viewportOffsetY),
@@ -308,7 +489,7 @@ private fun FarmBoard(
                         boardHeightPx = boardHeightPx,
                         density = this
                     )
-                    val assetDragEnabled = startTile != null && (moveToolSelected || currentInteractionKey == null)
+                    val assetDragEnabled = startTile != null && currentInteractionKey == null
 
                     while (true) {
                         val event = awaitPointerEvent()
@@ -601,32 +782,14 @@ private fun FarmBoard(
                 )
             }
         }
-        Column(
+        GardenMapZoomRail(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(10.dp)
                 .zIndex(30f),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            FarmZoomButton(label = "+", onClick = { zoomViewport(viewportScale * 1.25f) })
-            FarmZoomButton(label = "-", onClick = { zoomViewport(viewportScale / 1.25f) })
-        }
-    }
-}
-
-@Composable
-private fun FarmZoomButton(label: String, onClick: () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .size(42.dp)
-            .clickable(onClick = onClick),
-        shape = MaterialTheme.shapes.medium,
-        color = Color(0xFFFFF8E7).copy(alpha = 0.90f),
-        shadowElevation = 5.dp
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(label, color = Color(0xFF2F6F4E), fontSize = 24.sp, fontWeight = FontWeight.Black)
-        }
+            onZoomIn = { zoomViewport(viewportScale * 1.25f) },
+            onZoomOut = { zoomViewport(viewportScale / 1.25f) }
+        )
     }
 }
 
@@ -1764,73 +1927,9 @@ private fun DrawScope.drawVegetableSign() {
 }
 
 @Composable
-private fun FarmToolPicker(
-    activeBatches: List<PlantingBatch>,
-    selectedTool: String?,
-    onSelectedToolChange: (String?) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            item {
-                FilterChip(
-                    selected = selectedTool == null,
-                    onClick = { onSelectedToolChange(null) },
-                    label = { Text("查看") }
-                )
-            }
-            item {
-                val key = FarmTool.Move.toToolKey()
-                FilterChip(
-                    selected = selectedTool == key,
-                    onClick = { onSelectedToolChange(key) },
-                    label = { Text("移动") }
-                )
-            }
-            item {
-                FilterChip(
-                    selected = selectedTool == FarmTool.Clear.toToolKey(),
-                    onClick = { onSelectedToolChange(FarmTool.Clear.toToolKey()) },
-                    label = { Text("清空") }
-                )
-            }
-            items(activeBatches, key = { it.id }) { batch ->
-                val crop = CropLibrary.byId(batch.cropId)
-                FilterChip(
-                    selected = selectedTool == FarmTool.Plant(batch.id).toToolKey(),
-                    onClick = { onSelectedToolChange(FarmTool.Plant(batch.id).toToolKey()) },
-                    label = {
-                        Text(
-                            "${crop.name}${batch.variety.takeIf { it.isNotBlank() }?.let { " · $it" } ?: ""} · ${batch.method.materialLabel}",
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                )
-            }
-        }
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val structureTools = listOf(
-                FarmTileType.SIGN
-            )
-            items(structureTools, key = { it.name }) { type ->
-                val key = FarmTool.Structure(type).toToolKey()
-                FilterChip(
-                    selected = selectedTool == key,
-                    onClick = { onSelectedToolChange(key) },
-                    label = { Text(type.label) }
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun FarmSelectionPanel(
-    tile: FarmTile?,
-    insight: PlantingInsight?,
-    onRotateLeft: (() -> Unit)?,
-    onRotateRight: (() -> Unit)?,
-    onResetRotation: (() -> Unit)?
+    tile: FarmTile,
+    insight: PlantingInsight?
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -1870,12 +1969,12 @@ private fun FarmSelectionPanel(
                         )
                     } else {
                         Text(
-                            tile?.type?.label ?: "草地",
+                            tile.type.label,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            "拖拽可移动，使用下方按钮调整角度",
+                            "按住并拖拽即可移动",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -1883,57 +1982,12 @@ private fun FarmSelectionPanel(
                         )
                     }
                 }
-                if (tile != null) {
-                    AssistChip(onClick = {}, label = { Text(tile.type.label) })
-                }
-            }
-            if (tile != null && onRotateLeft != null && onRotateRight != null && onResetRotation != null) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedButton(onClick = onRotateLeft, modifier = Modifier.weight(1f)) {
-                        Text("左转")
-                    }
-                    AssistChip(
-                        onClick = {},
-                        label = { Text("${tile.rotationDegrees.roundToInt()}°") }
-                    )
-                    OutlinedButton(onClick = onRotateRight, modifier = Modifier.weight(1f)) {
-                        Text("右转")
-                    }
-                    OutlinedButton(onClick = onResetRotation) {
-                        Text("归零")
-                    }
-                }
+                AssistChip(onClick = {}, label = { Text(tile.type.label) })
             }
         }
     }
 }
 
-private fun FarmTool.toToolKey(): String = when (this) {
-    FarmTool.Move -> "move"
-    FarmTool.Clear -> "clear"
-    is FarmTool.Plant -> "plant:$batchId"
-    is FarmTool.Structure -> "structure:${type.name}"
-}
-
-private fun String.toFarmTool(): FarmTool? {
-    return when {
-        this == "move" -> FarmTool.Move
-        this == "clear" -> FarmTool.Clear
-        startsWith("plant:") -> FarmTool.Plant(removePrefix("plant:"))
-        startsWith("structure:") -> {
-            val type = runCatching {
-                enumValueOf<FarmTileType>(removePrefix("structure:"))
-            }.getOrNull() ?: return null
-            FarmTool.Structure(type)
-        }
-
-        else -> null
-    }
-}
 
 private fun cropColor(category: String, cropName: String): Color {
     return when {

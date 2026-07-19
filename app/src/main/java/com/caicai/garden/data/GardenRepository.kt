@@ -16,7 +16,12 @@ class GardenRepository(context: Context) {
             return seedState().also(::save)
         }
 
-        return runCatching { decodeState(JSONObject(raw)) }
+        return runCatching {
+            val json = JSONObject(raw)
+            decodeState(json).also { decoded ->
+                if (!json.has("farmLayouts")) save(decoded)
+            }
+        }
             .getOrElse { seedState().also(::save) }
     }
 
@@ -101,7 +106,9 @@ class GardenRepository(context: Context) {
             plots = plots,
             batches = batches,
             records = records,
-            farmLayout = defaultFarmLayout(batches)
+            farmLayouts = plots.associate { plot ->
+                plot.id to defaultFarmLayout(batches.filter { it.plotId == plot.id })
+            }
         )
     }
 
@@ -111,7 +118,24 @@ class GardenRepository(context: Context) {
             .put("plots", JSONArray().apply { state.plots.forEach { put(encodePlot(it)) } })
             .put("batches", JSONArray().apply { state.batches.forEach { put(encodeBatch(it)) } })
             .put("records", JSONArray().apply { state.records.forEach { put(encodeRecord(it)) } })
-            .put("farmLayout", encodeFarmLayout(state.farmLayout))
+            .put(
+                "farmLayouts",
+                JSONArray().apply {
+                    state.plots.forEach { plot ->
+                        put(
+                            JSONObject()
+                                .put("plotId", plot.id)
+                                .put(
+                                    "layout",
+                                    encodeFarmLayout(
+                                        state.farmLayouts[plot.id]
+                                            ?: defaultFarmLayout(state.batches.filter { it.plotId == plot.id })
+                                    )
+                                )
+                        )
+                    }
+                }
+            )
     }
 
     private fun decodeState(json: JSONObject): GardenDataState {
@@ -119,12 +143,21 @@ class GardenRepository(context: Context) {
         val plots = json.optJSONArray("plots").toPlotList()
         val batches = json.optJSONArray("batches").toBatchList()
         val records = json.optJSONArray("records").toRecordList()
+        val farmLayouts = if (json.has("farmLayouts")) {
+            json.optJSONArray("farmLayouts").toFarmLayoutMap(plots, batches)
+        } else {
+            migrateLegacyFarmLayout(
+                plots = plots,
+                batches = batches,
+                legacyLayout = json.optJSONObject("farmLayout").toFarmLayout(batches)
+            )
+        }
         return GardenDataState(
             gardens = gardens,
             plots = plots,
             batches = batches,
             records = records,
-            farmLayout = json.optJSONObject("farmLayout").toFarmLayout(batches)
+            farmLayouts = farmLayouts
         )
     }
 
@@ -248,6 +281,48 @@ class GardenRepository(context: Context) {
             return defaultFarmLayout(batches)
         }
         return FarmLayout(rows = rows, columns = columns, tiles = tiles)
+    }
+
+    private fun JSONArray?.toFarmLayoutMap(
+        plots: List<Plot>,
+        batches: List<PlantingBatch>
+    ): Map<String, FarmLayout> {
+        val savedLayouts = if (this == null) {
+            emptyMap()
+        } else {
+            (0 until length()).mapNotNull { index ->
+                val item = optJSONObject(index) ?: return@mapNotNull null
+                val plotId = item.optString("plotId").takeIf { id -> plots.any { it.id == id } }
+                    ?: return@mapNotNull null
+                val plotBatches = batches.filter { it.plotId == plotId }
+                plotId to item.optJSONObject("layout").toFarmLayout(plotBatches)
+            }.toMap()
+        }
+        return plots.associate { plot ->
+            plot.id to (savedLayouts[plot.id]
+                ?: defaultFarmLayout(batches.filter { it.plotId == plot.id }))
+        }
+    }
+
+    private fun migrateLegacyFarmLayout(
+        plots: List<Plot>,
+        batches: List<PlantingBatch>,
+        legacyLayout: FarmLayout
+    ): Map<String, FarmLayout> {
+        val batchesById = batches.associateBy { it.id }
+        val sharedTiles = legacyLayout.tiles.filter { it.batchId == null }
+        return plots.associate { plot ->
+            val plotBatches = batches.filter { it.plotId == plot.id }
+            val plotTiles = legacyLayout.tiles.filter { tile ->
+                tile.batchId?.let { batchesById[it]?.plotId == plot.id } == true
+            }
+            val migratedTiles = (sharedTiles + plotTiles).distinctBy { it.row to it.column }
+            plot.id to if (migratedTiles.any { it.batchId != null } || plotBatches.isEmpty()) {
+                legacyLayout.copy(tiles = migratedTiles)
+            } else {
+                defaultFarmLayout(plotBatches)
+            }
+        }
     }
 
     private fun JSONArray?.toFarmTileList(rows: Int, columns: Int, batchIds: Set<String>): List<FarmTile> {

@@ -116,6 +116,9 @@ fun FarmAssetBoard(
     insightsByBatch: Map<String, PlantingInsight>,
     interactionKey: String?,
     boardHeight: Dp,
+    selectedCell: Pair<Int, Int>?,
+    selectedBatchId: String?,
+    selectedLabel: String?,
     onCellClick: (Int, Int) -> Unit,
     onTileMove: (Int, Int, Int, Int) -> Unit,
     onTileSelect: (Int, Int) -> Unit
@@ -390,17 +393,129 @@ fun FarmAssetBoard(
                 dragOffset = dragOffset,
                 dragTargetCell = dragTargetCell
             )
+            FarmSelectionLayer(
+                rows = rows,
+                columns = columns,
+                tilesByCell = tilesByCell,
+                selectedCell = selectedCell,
+                selectedBatchId = selectedBatchId,
+                selectedLabel = selectedLabel
+            )
         }
 
-        Column(
+        GardenMapZoomRail(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(10.dp)
                 .zIndex(3f),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            FarmAssetZoomButton(label = "+", onClick = { zoomViewport(viewportScale * 1.25f) })
-            FarmAssetZoomButton(label = "-", onClick = { zoomViewport(viewportScale / 1.25f) })
+            onZoomIn = { zoomViewport(viewportScale * 1.25f) },
+            onZoomOut = { zoomViewport(viewportScale / 1.25f) }
+        )
+    }
+}
+
+@Composable
+private fun FarmSelectionLayer(
+    rows: Int,
+    columns: Int,
+    tilesByCell: Map<Pair<Int, Int>, FarmTile>,
+    selectedCell: Pair<Int, Int>?,
+    selectedBatchId: String?,
+    selectedLabel: String?
+) {
+    if (selectedCell == null) return
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val metrics = farmAssetMetrics(
+            width = size.width,
+            height = size.height,
+            rows = rows,
+            columns = columns
+        )
+        val highlightedCells = selectedBatchId?.let { batchId ->
+            tilesByCell
+                .filterValues { it.batchId == batchId }
+                .keys
+                .ifEmpty { setOf(selectedCell) }
+        } ?: setOf(selectedCell)
+
+        highlightedCells.forEach { (row, column) ->
+            val projection = metrics.cellProjection(row, column)
+            val halfWidth = metrics.tileWidth * 0.55f * projection.scale
+            val halfHeight = metrics.tileHeight * 0.58f * projection.scale
+            val center = projection.center
+            val path = Path().apply {
+                moveTo(center.x, center.y - halfHeight)
+                lineTo(center.x + halfWidth, center.y)
+                lineTo(center.x, center.y + halfHeight)
+                lineTo(center.x - halfWidth, center.y)
+                close()
+            }
+            drawPath(path, color = Color(0xFFDAF0C8).copy(alpha = 0.30f))
+            drawPath(
+                path = path,
+                color = Color(0xFFFFF7E9),
+                style = Stroke(
+                    width = 4.dp.toPx(),
+                    cap = StrokeCap.Round,
+                    join = StrokeJoin.Round
+                )
+            )
+            drawPath(
+                path = path,
+                color = Color(0xFF2F6F4E),
+                style = Stroke(
+                    width = 2.dp.toPx(),
+                    cap = StrokeCap.Round,
+                    join = StrokeJoin.Round
+                )
+            )
+        }
+
+        selectedLabel?.takeIf { it.isNotBlank() }?.let { label ->
+            val center = metrics.cellCenter(selectedCell.first, selectedCell.second)
+            val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = android.graphics.Color.rgb(32, 48, 37)
+                textSize = 12.sp.toPx()
+                typeface = android.graphics.Typeface.create(
+                    android.graphics.Typeface.DEFAULT,
+                    android.graphics.Typeface.BOLD
+                )
+                textAlign = Paint.Align.LEFT
+            }
+            val horizontalPadding = 9.dp.toPx()
+            val labelHeight = 28.dp.toPx()
+            val labelWidth = textPaint.measureText(label) + horizontalPadding * 2f
+            val labelLeft = (center.x - labelWidth / 2f)
+                .coerceIn(8.dp.toPx(), size.width - labelWidth - 8.dp.toPx())
+            val labelTop = (center.y - metrics.tileHeight * 1.55f - labelHeight)
+                .coerceAtLeast(8.dp.toPx())
+            drawRoundRect(
+                color = Color(0xFFFFF7E9),
+                topLeft = Offset(labelLeft, labelTop),
+                size = Size(labelWidth, labelHeight),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(
+                    14.dp.toPx(),
+                    14.dp.toPx()
+                )
+            )
+            drawRoundRect(
+                color = Color(0xFF2F6F4E),
+                topLeft = Offset(labelLeft, labelTop),
+                size = Size(labelWidth, labelHeight),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(
+                    14.dp.toPx(),
+                    14.dp.toPx()
+                ),
+                style = Stroke(width = 1.dp.toPx())
+            )
+            drawIntoCanvas { canvas ->
+                canvas.nativeCanvas.drawText(
+                    label,
+                    labelLeft + horizontalPadding,
+                    labelTop + labelHeight * 0.66f,
+                    textPaint
+                )
+            }
         }
     }
 }
@@ -473,22 +588,6 @@ private fun FarmAnimatedTileLayer(
         )
         dragTargetCell?.let { cell ->
             drawTargetCell(bitmaps, metrics, cell.first, cell.second)
-        }
-    }
-}
-
-@Composable
-private fun FarmAssetZoomButton(label: String, onClick: () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .size(42.dp)
-            .clickable(onClick = onClick),
-        shape = MaterialTheme.shapes.medium,
-        color = Color(0xFFFFF8E7).copy(alpha = 0.92f),
-        shadowElevation = 4.dp
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(label, color = Color(0xFF2F6F4E), fontSize = 24.sp)
         }
     }
 }
@@ -1027,7 +1126,7 @@ private fun DrawScope.drawRaisedBedCrop(
         anchorYFraction = visual.groundAnchorYFraction,
         contentWidth = cropWidth,
         heightScale = visual.heightScale,
-        rotationDegrees = tile.rotationDegrees + windRotation,
+        rotationDegrees = windRotation,
         primaryContentOnly = true,
         clipBottomY = if (visual.groundingStyle == CropGroundingStyle.SPRAWLING) {
             null

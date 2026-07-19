@@ -23,8 +23,12 @@ import com.caicai.garden.data.TaskReminder
 import com.caicai.garden.data.WeatherForecast
 import com.caicai.garden.data.WeatherService
 import com.caicai.garden.data.defaultFarmTileRotation
+import com.caicai.garden.data.farmLayoutFor
 import com.caicai.garden.data.moveTile
-import com.caicai.garden.data.normalizeFarmTileRotation
+import com.caicai.garden.data.placeBatchAtCell
+import com.caicai.garden.data.placeBatchInFirstEmptyCell
+import com.caicai.garden.data.removeBatch
+import com.caicai.garden.data.withFarmLayout
 import com.caicai.garden.domain.GardenAdvisor
 import com.caicai.garden.domain.PlantingInsight
 import kotlinx.coroutines.launch
@@ -110,7 +114,13 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
             growingStyle = style,
             soilType = soilType.trim().ifBlank { "壤土" }
         )
-        persist(dataState.copy(plots = dataState.plots + plot))
+        persist(
+            dataState.copy(
+                plots = dataState.plots + plot,
+                farmLayouts = dataState.farmLayouts +
+                    (plot.id to repository.defaultFarmLayout(emptyList()))
+            )
+        )
         message = "已添加地块"
     }
 
@@ -120,10 +130,23 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
         variety: String,
         method: PlantingMethod,
         startDate: String,
-        quantityLabel: String
+        quantityLabel: String,
+        targetRow: Int? = null,
+        targetColumn: Int? = null,
+        showMessage: Boolean = true
     ) {
-        if (plotId.isNullOrBlank()) {
+        val targetPlotId = plotId?.takeIf { id -> dataState.plots.any { it.id == id } }
+        if (targetPlotId == null) {
             message = "请选择地块"
+            return
+        }
+        val crop = CropLibrary.byId(cropId)
+        if (method !in crop.supportedPlantingMethods) {
+            message = "${crop.name}不支持${method.label}，请选择可用的种植方式"
+            return
+        }
+        if (quantityLabel.isBlank()) {
+            message = "请填写种植数量"
             return
         }
         val parsedDate = runCatching { LocalDate.parse(startDate) }.getOrNull()
@@ -135,10 +158,26 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
             message = "种植日期不能晚于今天"
             return
         }
-        val crop = CropLibrary.byId(cropId)
+        val requestedCell = if (targetRow != null && targetColumn != null) {
+            targetRow to targetColumn
+        } else {
+            null
+        }
+        val currentLayout = dataState.farmLayoutFor(targetPlotId)
+        if (requestedCell != null) {
+            val (row, column) = requestedCell
+            if (row !in 0 until currentLayout.rows || column !in 0 until currentLayout.columns) {
+                message = "所选菜地位置无效，请重新选择"
+                return
+            }
+            if (currentLayout.tiles.any { it.row == row && it.column == column }) {
+                message = "这格已经有内容，请选择空地"
+                return
+            }
+        }
         val batch = PlantingBatch(
             id = GardenRepository.newId(),
-            plotId = plotId,
+            plotId = targetPlotId,
             cropId = crop.id,
             variety = variety.trim(),
             method = method,
@@ -146,32 +185,99 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
             quantityLabel = quantityLabel.trim().ifBlank { "未填写" },
             status = BatchStatus.ACTIVE
         )
-        persist(dataState.copy(batches = dataState.batches + batch))
+        val stateWithBatch = dataState.copy(batches = dataState.batches + batch)
+        val nextLayout = requestedCell?.let { (row, column) ->
+            currentLayout.placeBatchAtCell(batch.id, row, column)
+        } ?: currentLayout.placeBatchInFirstEmptyCell(batch.id)
+        val placedInGarden = nextLayout != currentLayout
+        persist(stateWithBatch.withFarmLayout(targetPlotId, nextLayout))
         addSystemRecord(
             batch,
             when (method) {
                 PlantingMethod.SEED -> OperationType.SOW
                 PlantingMethod.TRANSPLANT -> OperationType.TRANSPLANT
                 PlantingMethod.CUTTING -> OperationType.CUTTING
+                PlantingMethod.DIVISION -> OperationType.DIVISION
+                PlantingMethod.BULB -> OperationType.BULB_PLANT
+                PlantingMethod.TUBER -> OperationType.TUBER_PLANT
             },
             "${method.label} · ${method.dateLabel} $parsedDate"
         )
-        message = "已记录 ${crop.name}：${method.materialLabel}，${method.dateLabel} $parsedDate"
+        if (showMessage) {
+            message = if (placedInGarden) {
+                "已记录 ${crop.name}并放入菜畦：${method.materialLabel}，${method.dateLabel} $parsedDate"
+            } else {
+                "已记录 ${crop.name}，当前菜畦没有空位"
+            }
+        }
     }
 
-    fun addOperation(batchId: String?, type: OperationType, amountLabel: String, note: String) {
+    fun addOperation(
+        batchId: String?,
+        type: OperationType,
+        amountLabel: String,
+        note: String,
+        showMessage: Boolean = true
+    ): Boolean {
         val batch = dataState.batches.firstOrNull { it.id == batchId }
+        val duplicateWindowStart = LocalDateTime.now().minusSeconds(10)
+        val duplicate = dataState.records.asReversed().firstOrNull {
+            it.batchId == batch?.id && it.type == type
+        }?.timestamp?.let { timestamp ->
+            runCatching { LocalDateTime.parse(timestamp) }.getOrNull()
+        }?.isAfter(duplicateWindowStart) == true
+        if (duplicate) {
+            message = "${type.label}刚刚已经记录，请勿重复操作"
+            return false
+        }
         val record = OperationRecord(
             id = GardenRepository.newId(),
             batchId = batch?.id,
             plotId = batch?.plotId,
             type = type,
-            timestamp = LocalDateTime.now().withSecond(0).withNano(0).toString(),
+            timestamp = LocalDateTime.now().withNano(0).toString(),
             amountLabel = amountLabel.trim(),
             note = note.trim()
         )
         persist(dataState.copy(records = dataState.records + record))
-        message = "已记录${type.label}"
+        if (showMessage) message = "已记录${type.label}"
+        return true
+    }
+
+    fun harvestBatch(
+        batchId: String,
+        amountLabel: String,
+        quality: String,
+        finishAndClear: Boolean
+    ) {
+        val batch = dataState.batches.firstOrNull {
+            it.id == batchId && it.status != BatchStatus.FINISHED
+        }
+        if (batch == null) {
+            message = "这批作物已经结束"
+            return
+        }
+        val record = OperationRecord(
+            id = GardenRepository.newId(),
+            batchId = batch.id,
+            plotId = batch.plotId,
+            type = OperationType.HARVEST,
+            timestamp = LocalDateTime.now().withNano(0).toString(),
+            amountLabel = amountLabel.trim(),
+            note = "品质：${quality.trim().ifBlank { "良好" }}"
+        )
+        var nextState = dataState.copy(records = dataState.records + record)
+        if (finishAndClear) {
+            nextState = nextState.copy(
+                batches = nextState.batches.map {
+                    if (it.id == batch.id) it.copy(status = BatchStatus.FINISHED) else it
+                }
+            )
+            val clearedLayout = nextState.farmLayoutFor(batch.plotId).removeBatch(batch.id)
+            nextState = nextState.withFarmLayout(batch.plotId, clearedLayout)
+        }
+        persist(nextState)
+        message = if (finishAndClear) "已记录采摘并清空这批菜地" else "已记录本次采摘"
     }
 
     fun completeTask(task: TaskReminder) {
@@ -182,31 +288,49 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
             batchId = batch?.id,
             plotId = task.plotId ?: batch?.plotId,
             type = type,
-            timestamp = LocalDateTime.now().withSecond(0).withNano(0).toString(),
+            timestamp = LocalDateTime.now().withNano(0).toString(),
             amountLabel = task.actionLabel,
             note = task.title
         )
-        persist(dataState.copy(records = dataState.records + record))
-        message = "已完成：${task.title}"
+        val stateWithRecord = dataState.copy(records = dataState.records + record)
+        if (task.type == com.caicai.garden.data.TaskType.LIFECYCLE && batch != null) {
+            persist(finishAndClearBatch(stateWithRecord, batch))
+            message = "已结束本茬并清空菜格"
+        } else {
+            persist(stateWithRecord)
+            message = "已完成：${task.title}"
+        }
     }
 
     fun finishBatch(batchId: String) {
-        persist(
-            dataState.copy(
-                batches = dataState.batches.map {
-                    if (it.id == batchId) it.copy(status = BatchStatus.FINISHED) else it
-                }
-            )
-        )
-        message = "种植批次已结束"
+        val batch = dataState.batches.firstOrNull { it.id == batchId }
+        if (batch == null) {
+            message = "未找到这批作物"
+            return
+        }
+        persist(finishAndClearBatch(dataState, batch))
+        message = "种植批次已结束并清空菜格"
     }
 
-    fun placeFarmTile(row: Int, column: Int, type: FarmTileType, batchId: String?) {
-        val layout = dataState.farmLayout
+    fun placeFarmTile(
+        plotId: String?,
+        row: Int,
+        column: Int,
+        type: FarmTileType,
+        batchId: String?
+    ) {
+        val activePlotId = plotId?.takeIf { id -> dataState.plots.any { it.id == id } } ?: return
+        val layout = dataState.farmLayoutFor(activePlotId)
         if (row !in 0 until layout.rows || column !in 0 until layout.columns) return
 
         val activeBatchId = if (type == FarmTileType.RAISED_BED) {
-            batchId?.takeIf { id -> dataState.batches.any { it.id == id && it.status != BatchStatus.FINISHED } }
+            batchId?.takeIf { id ->
+                dataState.batches.any {
+                    it.id == id &&
+                        it.plotId == activePlotId &&
+                        it.status != BatchStatus.FINISHED
+                }
+            }
         } else {
             null
         }
@@ -230,58 +354,46 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
                     )
                 }
             }
-        persist(dataState.copy(farmLayout = layout.copy(tiles = nextTiles)))
+        persist(dataState.withFarmLayout(activePlotId, layout.copy(tiles = nextTiles)))
     }
 
-    fun clearFarmTile(row: Int, column: Int) {
-        val layout = dataState.farmLayout
+    fun clearFarmTile(plotId: String?, row: Int, column: Int) {
+        val activePlotId = plotId?.takeIf { id -> dataState.plots.any { it.id == id } } ?: return
+        val layout = dataState.farmLayoutFor(activePlotId)
         persist(
-            dataState.copy(
-                farmLayout = layout.copy(
-                    tiles = layout.tiles.filterNot { it.row == row && it.column == column }
-                )
+            dataState.withFarmLayout(
+                activePlotId,
+                layout.copy(tiles = layout.tiles.filterNot { it.row == row && it.column == column })
             )
         )
     }
 
-    fun moveFarmTile(fromRow: Int, fromColumn: Int, toRow: Int, toColumn: Int) {
-        val layout = dataState.farmLayout
+    fun moveFarmTile(
+        plotId: String?,
+        fromRow: Int,
+        fromColumn: Int,
+        toRow: Int,
+        toColumn: Int
+    ) {
+        val activePlotId = plotId?.takeIf { id -> dataState.plots.any { it.id == id } } ?: return
+        val layout = dataState.farmLayoutFor(activePlotId)
         val targetWasOccupied = layout.tiles.any { it.row == toRow && it.column == toColumn }
         val nextLayout = layout.moveTile(fromRow, fromColumn, toRow, toColumn)
         if (nextLayout == layout) return
-        persist(dataState.copy(farmLayout = nextLayout))
+        persist(dataState.withFarmLayout(activePlotId, nextLayout))
         message = if (targetWasOccupied) "目标格已有内容，已交换位置" else "已移动到新位置"
     }
 
-    fun rotateFarmTile(row: Int, column: Int, deltaDegrees: Float) {
-        val layout = dataState.farmLayout
-        if (row !in 0 until layout.rows || column !in 0 until layout.columns) return
-        val nextTiles = layout.tiles.map { tile ->
-            if (tile.row == row && tile.column == column) {
-                tile.copy(rotationDegrees = normalizeFarmTileRotation(tile.rotationDegrees + deltaDegrees))
-            } else {
-                tile
-            }
-        }
-        persist(dataState.copy(farmLayout = layout.copy(tiles = nextTiles)))
-    }
-
-    fun resetFarmTileRotation(row: Int, column: Int) {
-        val layout = dataState.farmLayout
-        if (row !in 0 until layout.rows || column !in 0 until layout.columns) return
-        val nextTiles = layout.tiles.map { tile ->
-            if (tile.row == row && tile.column == column) {
-                tile.copy(rotationDegrees = 0f)
-            } else {
-                tile
-            }
-        }
-        persist(dataState.copy(farmLayout = layout.copy(tiles = nextTiles)))
-    }
-
-    fun resetFarmLayout() {
-        persist(dataState.copy(farmLayout = repository.defaultFarmLayout(dataState.batches)))
-        message = "已重置农场布局"
+    fun resetFarmLayout(plotId: String?) {
+        val activePlotId = plotId?.takeIf { id -> dataState.plots.any { it.id == id } } ?: return
+        val plotBatches = dataState.batches.filter { it.plotId == activePlotId }
+        persist(
+            dataState.withFarmLayout(
+                activePlotId,
+                repository.defaultFarmLayout(plotBatches)
+            )
+        )
+        message = "已重置当前地块布局"
     }
 
     fun consumeMessage() {
@@ -294,7 +406,7 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
             batchId = batch.id,
             plotId = batch.plotId,
             type = type,
-            timestamp = LocalDateTime.now().withSecond(0).withNano(0).toString(),
+            timestamp = LocalDateTime.now().withNano(0).toString(),
             amountLabel = batch.quantityLabel,
             note = note
         )
@@ -304,5 +416,17 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     private fun persist(next: GardenDataState) {
         dataState = next
         repository.save(next)
+    }
+
+    private fun finishAndClearBatch(state: GardenDataState, batch: PlantingBatch): GardenDataState {
+        val finishedState = state.copy(
+            batches = state.batches.map {
+                if (it.id == batch.id) it.copy(status = BatchStatus.FINISHED) else it
+            }
+        )
+        return finishedState.withFarmLayout(
+            batch.plotId,
+            finishedState.farmLayoutFor(batch.plotId).removeBatch(batch.id)
+        )
     }
 }

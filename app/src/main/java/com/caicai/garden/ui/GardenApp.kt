@@ -290,6 +290,7 @@ private fun GardenScreen(
         item {
             FarmDesignerSection(
                 viewModel = viewModel,
+                selectedPlotId = selectedPlot?.id,
                 onSelectedPlotChange = { selectedPlotId = it }
             )
         }
@@ -1243,9 +1244,18 @@ private fun AddBatchDialog(
     var plot by remember { mutableStateOf(plots.firstOrNull()) }
     var crop by remember { mutableStateOf(CropLibrary.crops.first()) }
     var variety by rememberSaveable { mutableStateOf("") }
-    var method by remember { mutableStateOf(PlantingMethod.SEED) }
+    var method by remember {
+        mutableStateOf(CropLibrary.crops.first().supportedPlantingMethods.first())
+    }
     var startDate by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
-    var quantity by rememberSaveable { mutableStateOf("") }
+    var quantity by rememberSaveable {
+        mutableStateOf("1 ${CropLibrary.crops.first().supportedPlantingMethods.first().quantityUnit}")
+    }
+    val parsedStartDate = runCatching { LocalDate.parse(startDate) }.getOrNull()
+    val canSave = plot != null &&
+        quantity.isNotBlank() &&
+        parsedStartDate != null &&
+        !parsedStartDate.isAfter(LocalDate.now())
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1267,22 +1277,43 @@ private fun AddBatchDialog(
                         selectedLabel = crop.name,
                         options = CropLibrary.crops,
                         optionLabel = { "${it.name} · ${it.category}" },
-                        onSelect = { crop = it }
+                        onSelect = { selectedCrop ->
+                            crop = selectedCrop
+                            if (method !in selectedCrop.supportedPlantingMethods) {
+                                method = selectedCrop.supportedPlantingMethods.first()
+                                quantity = "1 ${method.quantityUnit}"
+                            }
+                        }
                     )
                     OutlinedTextField(value = variety, onValueChange = { variety = it }, label = { Text("品种") }, modifier = Modifier.fillMaxWidth())
                     SimpleDropdown(
                         label = "方式",
                         selectedLabel = method.label,
-                        options = PlantingMethod.values().toList(),
+                        options = crop.supportedPlantingMethods,
                         optionLabel = { it.label },
-                        onSelect = { method = it }
+                        onSelect = {
+                            method = it
+                            quantity = "1 ${it.quantityUnit}"
+                        }
                     )
                     OutlinedTextField(value = startDate, onValueChange = { startDate = it }, label = { Text("日期 YYYY-MM-DD") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = quantity, onValueChange = { quantity = it }, label = { Text("数量/面积") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        value = quantity,
+                        onValueChange = { quantity = it },
+                        label = { Text("数量（${method.quantityUnit}）/面积") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         },
-        confirmButton = { Button(onClick = { onSave(plot?.id, crop.id, variety, method, startDate, quantity) }) { Text("保存") } },
+        confirmButton = {
+            Button(
+                onClick = { onSave(plot?.id, crop.id, variety, method, startDate, quantity) },
+                enabled = canSave
+            ) {
+                Text("保存")
+            }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
     )
 }

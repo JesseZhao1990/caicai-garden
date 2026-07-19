@@ -64,4 +64,63 @@ class FarmLayoutTest {
         assertSame(layout, layout.moveTile(0, 0, 1, 1))
         assertSame(layout, layout.moveTile(2, 1, 2, 1))
     }
+
+    @Test
+    fun newBatchIsPlacedInAnEmptyCellWithoutReplacingExistingTiles() {
+        val sign = FarmTile(3, 3, FarmTileType.SIGN)
+        val layout = FarmLayout(tiles = listOf(sign))
+
+        val updated = layout.placeBatchInFirstEmptyCell("tomato")
+
+        assertEquals(2, updated.tiles.size)
+        assertEquals(sign, updated.tiles.single { it.type == FarmTileType.SIGN })
+        assertEquals(
+            "tomato",
+            updated.tiles.single { it.type == FarmTileType.RAISED_BED }.batchId
+        )
+    }
+
+    @Test
+    fun fullLayoutDoesNotDiscardAnExistingTile() {
+        val layout = FarmLayout(
+            rows = 1,
+            columns = 1,
+            tiles = listOf(FarmTile(0, 0, FarmTileType.SIGN))
+        )
+
+        assertSame(layout, layout.placeBatchInFirstEmptyCell("tomato"))
+    }
+
+    @Test
+    fun mapPlantingUsesTheCellChosenByTheUser() {
+        val sign = FarmTile(2, 4, FarmTileType.SIGN)
+        val layout = FarmLayout(tiles = listOf(sign))
+
+        val updated = layout.placeBatchAtCell("tomato", row = 5, column = 1)
+
+        assertEquals(2, updated.tiles.size)
+        assertEquals(
+            FarmTile(5, 1, FarmTileType.RAISED_BED, batchId = "tomato"),
+            updated.tiles.single { it.batchId == "tomato" }
+        )
+        assertSame(layout, layout.placeBatchAtCell("tomato", row = 2, column = 4))
+    }
+
+    @Test
+    fun finishingHarvestClearsEveryCellFromTheSameBatchOnly() {
+        val layout = FarmLayout(
+            tiles = listOf(
+                FarmTile(2, 1, FarmTileType.RAISED_BED, batchId = "tomato"),
+                FarmTile(3, 2, FarmTileType.RAISED_BED, batchId = "tomato"),
+                FarmTile(5, 4, FarmTileType.RAISED_BED, batchId = "cucumber"),
+                FarmTile(2, 4, FarmTileType.SIGN)
+            )
+        )
+
+        val updated = layout.removeBatch("tomato")
+
+        assertEquals(2, updated.tiles.size)
+        assertEquals(setOf("cucumber"), updated.tiles.mapNotNull { it.batchId }.toSet())
+        assertEquals(1, updated.tiles.count { it.type == FarmTileType.SIGN })
+    }
 }
